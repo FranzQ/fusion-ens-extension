@@ -6,6 +6,8 @@
     font-display: swap;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@900&display=swap');
+
 /* ENS Brand Colors */
 :root {
     --ens-blue: #0080BC;
@@ -19,6 +21,12 @@
 
 * {
     box-sizing: border-box;
+    font-family: 'Alexandria', sans-serif;
+}
+
+body {
+    font-family: 'Alexandria', sans-serif;
+    font-weight: 400;
 }
 
 /* Override Bootstrap constraints */
@@ -45,7 +53,7 @@ body {
     padding: 0 !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, var(--ens-dark-blue) 0%, #011A25 100%);
-    color: var(--ens-white);
+    color: #ffffff;
     overflow: hidden;
     max-width: 500px !important;
     min-width: 500px !important;
@@ -81,8 +89,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
-    background: rgb(41, 48, 56);
-    color: #f0f0f0;
+    background: #1f1e1e;
+    color: #ffffff;
 }
 
 /* Header */
@@ -107,17 +115,19 @@ body {
 }
 
 .header-text h3 {
+    font-family: 'Alexandria', sans-serif;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 900;
     margin: 0 0 4px 0;
-    color: var(--ens-white);
+    color: #ffffff;
 }
 
 .header-text p {
     font-size: 14px;
     margin: 0;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     opacity: 0.8;
+    font-weight: 400;
 }
 
 .network-indicator-header {
@@ -147,10 +157,11 @@ body {
 }
 
 .network-text {
-    color: var(--ens-gray-light);
+    color: #cccccc;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 400;
 }
 
 /* Content */
@@ -197,7 +208,7 @@ body {
     border-left: none !important;
     border-right: none !important;
     border-bottom: 3px solid rgba(255, 255, 255, 0.3) !important;
-    color: #f0f0f0 !important;
+    color: #ffffff !important;
     border-radius: 0 !important;
     /* No border radius for bottom border only */
     padding: 12px 20px;
@@ -214,7 +225,7 @@ body {
 }
 
 .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.389);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 20px;
     /* Reduced font size to match input */
     font-weight: 500;
@@ -230,7 +241,7 @@ body {
     border-left: none !important;
     border-right: none !important;
     border-bottom: 4px solid var(--ens-blue) !important;
-    color: #f0f0f0 !important;
+    color: #ffffff !important;
     transform: scale(1.01);
     /* Subtle scale effect */
     box-shadow: none !important;
@@ -244,7 +255,8 @@ body {
     /* Circular button */
     padding: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-family: 'Alexandria', sans-serif;
+    font-weight: 900;
     color: white;
     transition: all 0.3s ease;
     position: relative;
@@ -427,7 +439,7 @@ body {
 
 .result-label {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: white;
     margin: 0 0 4px 0;
     text-transform: uppercase;
@@ -450,7 +462,7 @@ body {
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.2);
     /* More visible border */
-    font-weight: 600;
+    font-weight: 700;
     /* Increased weight for better readability */
     letter-spacing: 0.5px;
     flex: 2;
@@ -499,7 +511,7 @@ body {
     align-items: center;
     gap: 10px;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     flex: 1;
     justify-content: center;
     backdrop-filter: blur(10px);
@@ -565,8 +577,8 @@ body {
 
 .info-title {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--ens-white);
+    font-weight: 700;
+    color: #ffffff;
     margin-bottom: 4px;
     letter-spacing: 0.5px;
 }
@@ -605,7 +617,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
@@ -626,7 +638,7 @@ body {
     border-radius: 50%;
     /* Circular settings button */
     padding: 12px;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     cursor: pointer;
     transition: all 0.3s ease;
     width: 40px;
@@ -638,7 +650,7 @@ body {
 
 .settings-btn:hover {
     background: rgba(255, 255, 255, 0.15);
-    color: var(--ens-white);
+    color: #ffffff;
     transform: scale(1.05);
 }
 
@@ -678,10 +690,11 @@ body {
 }
 
 .settings-header h3 {
+    font-family: 'Alexandria', sans-serif;
     margin: 0;
-    color: var(--ens-white);
+    color: #ffffff;
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 900;
 }
 
 .close-btn {
@@ -689,14 +702,14 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     padding: 8px;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.15);
-    color: var(--ens-white);
+    color: #ffffff;
 }
 
 .settings-body {
@@ -714,14 +727,14 @@ body {
 
 .setting-info h4 {
     margin: 0 0 4px 0;
-    color: var(--ens-white);
+    color: #ffffff;
     font-size: 16px;
     font-weight: 500;
 }
 
 .setting-info p {
     margin: 0;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     font-size: 14px;
     line-height: 1.4;
 }
@@ -791,7 +804,7 @@ body {
     background: transparent;
     border: none;
     border-radius: 8px;
-    color: var(--ens-gray-light);
+    color: #cccccc;
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 14px;
@@ -803,7 +816,7 @@ body {
 
 .network-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: var(--ens-white);
+    color: #ffffff;
 }
 
 .network-btn.active {
@@ -835,7 +848,7 @@ body {
     min-width: 250px;
     margin-left: -125px;
     background: var(--ens-dark-blue);
-    color: var(--ens-white);
+    color: #ffffff;
     text-align: center;
     border-radius: 8px;
     padding: 12px 16px;

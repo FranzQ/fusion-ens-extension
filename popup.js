@@ -1,6 +1,27 @@
 const invalidChars = /[!@#$%^&*()+\=\[\]{};'"\\|,<>\/?]+/;
 const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*\.[a-zA-Z0-9]+$/;
 
+// Rotating ENS names for the title
+const rotatingEnsNames = [
+    'ABENA.ETH',
+    'FRED.UNI.ETH',
+    'SES.SOL',
+    'FRANZ.BTC',
+    'VITALIK.ETH',
+    'CHARLIE.SOL',
+    'ADAM.BASE.ETH',
+];
+
+let currentEnsIndex = 0;
+
+function rotateEnsName() {
+    const ensNameElement = document.getElementById('rotatingEnsName');
+    if (ensNameElement) {
+        ensNameElement.textContent = rotatingEnsNames[currentEnsIndex];
+        currentEnsIndex = (currentEnsIndex + 1) % rotatingEnsNames.length;
+    }
+}
+
 // Chain configuration
 const chainConfig = {
     'eth': {
@@ -1026,6 +1047,10 @@ window.onload = async () => {
     mainnetBtn = document.getElementById("mainnetBtn");
     testnetBtn = document.getElementById("testnetBtn");
     networkIndicator = document.getElementById("networkIndicator");
+
+    // Start rotating ENS names in the title
+    rotateEnsName(); // Set initial name
+    setInterval(rotateEnsName, 1000); // Rotate every second
 
     // Set up event listeners
     explorerBtn.onclick = explore;
