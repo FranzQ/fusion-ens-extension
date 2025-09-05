@@ -38,7 +38,7 @@
 - **Tab** → Auto-complete `.eth`
 - **Enter** → Resolve
 - **Ctrl/Cmd+Enter** → Open explorer/profile
-- **Shift+Enter** → Open `.eth.xyz` profile
+- **Shift+Enter** → Open `app.ens.domains` profile
 
 ---
 

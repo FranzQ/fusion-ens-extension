@@ -189,18 +189,12 @@ async function resolveENS(domainName, network = 'mainnet') {
                     .catch(() => null)
             ];
         } else {
-            // For mainnet, use mainnet APIs
+            // For mainnet, use local ENS server with testnet resolution logic
             promises = [
-                // ENS Ideas API
-                fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                // Try local ENS server with mainnet network
+                fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
                     .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.address || null)
-                    .catch(() => null),
-
-                // ENS Domains API
-                fetch(`https://api.ens.domains/v1/domains/${domainName}`)
-                    .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.records?.ETH || null)
+                    .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         }
@@ -215,45 +209,11 @@ async function resolveENS(domainName, network = 'mainnet') {
                     .catch(() => null)
             ];
         } else {
-            // For mainnet, use .eth.xyz API to get multi-chain addresses
-            const nameWithoutTLD = domainName.replace(/\.[^.]+$/, '');
-
+            // For mainnet, use local ENS server with testnet resolution logic
             promises = [
-                // Use .eth.xyz text-records API for multi-chain resolution
-                fetch(`https://${nameWithoutTLD}.eth.xyz/text-records/${nameWithoutTLD}.eth`)
+                fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
                     .then(response => response.ok ? response.json() : null)
-                    .then(data => {
-                        if (data && data.success && data.data && data.data.wallets) {
-                            // Handle different types of data based on chain
-                            if (chain === 'name') {
-                                // Return the display name
-                                return data.data.name || null;
-                            } else if (chain === 'bio') {
-                                // Return the description/bio
-                                return data.data.description || null;
-                            } else if (chain === 'x') {
-                                // Return the Twitter/X handle
-                                return data.data['com.twitter'] || null;
-                            } else if (chain === 'url') {
-                                // Return the website URL
-                                return data.data.url || null;
-                            } else if (chain === 'github') {
-                                // Return the GitHub handle
-                                return data.data['com.github'] || null;
-                            } else {
-                                // Find the wallet for the specific chain
-                                const wallet = data.data.wallets.find(w =>
-                                    w.name.toLowerCase() === chain.toLowerCase() ||
-                                    w.name.toLowerCase() === chainConfig[chain].name.toLowerCase() ||
-                                    w.name.toLowerCase() === chainConfig[chain].displayName.toLowerCase()
-                                );
-                                if (wallet) {
-                                    return wallet.value;
-                                }
-                            }
-                        }
-                        return null;
-                    })
+                    .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         }
@@ -271,6 +231,41 @@ async function resolveENS(domainName, network = 'mainnet') {
     } catch (error) {
         console.log("Multi-chain resolution failed:", error);
         return null;
+    }
+}
+
+// DNSSEC validation function
+async function validateDNSSEC(domainName) {
+    try {
+        console.log('🔍 Validating DNSSEC for:', domainName);
+
+        // Use Cloudflare's DNS-over-HTTPS with DNSSEC validation
+        const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${domainName}&type=A&do=1`, {
+            headers: {
+                'Accept': 'application/dns-json'
+            }
+        });
+
+        if (!response.ok) {
+            console.log('❌ DNS query failed:', response.status);
+            return { isValid: false, reason: 'DNS query failed' };
+        }
+
+        const data = await response.json();
+        console.log('📡 DNS response:', data);
+
+        // Check if DNSSEC validation was performed
+        const hasDNSSEC = data.AD === true; // AD flag indicates DNSSEC validation
+
+        console.log('🔒 DNSSEC validation result:', hasDNSSEC);
+
+        return {
+            isValid: hasDNSSEC,
+            reason: hasDNSSEC ? 'DNSSEC validated' : 'No DNSSEC validation'
+        };
+    } catch (error) {
+        console.log('❌ DNSSEC validation error:', error);
+        return { isValid: false, reason: 'Validation failed' };
     }
 }
 
@@ -362,10 +357,20 @@ async function resolve() {
                 profilePicture = await fetchProfilePicture(domainName, address);
             }
 
+            // Validate DNSSEC for .eth domains
+            let dnssecInfo = null;
+            if (chain === 'eth') {
+                console.log('🔍 Starting DNSSEC validation for .eth domain:', domainName);
+                dnssecInfo = await validateDNSSEC(domainName);
+                console.log('🔍 DNSSEC validation completed:', dnssecInfo);
+            } else {
+                console.log('⏭️ Skipping DNSSEC validation for non-eth domain:', chain);
+            }
+
             // Display result with chain information
             const chainInfo = chainConfig[chain];
             showResult(address, chainInfo);
-            await display(address, profilePicture, chainInfo);
+            await display(address, profilePicture, chainInfo, dnssecInfo);
         } else if (chain !== 'eth') {
             // For non-eth chains, try to get the .eth address as fallback
             const nameWithoutTLD = domainName.replace(/\.[^.]+$/, '');
@@ -478,12 +483,12 @@ async function exploreEthXyz() {
     }
 
     if (chain === 'eth') {
-        // For .eth domains, open .eth.xyz profile page
-        const nameForEthXyz = domainName.replace(/\.eth$/, '');
-        chrome.tabs.create({ url: `https://${nameForEthXyz}.eth.xyz` });
+        // For .eth domains, open app.ens.domains profile page
+        const nameForEnsDomains = domainName.replace(/\.eth$/, '');
+        chrome.tabs.create({ url: `https://app.ens.domains/${nameForEnsDomains}.eth` });
     } else {
-        // For non-eth domains, show a message that .eth.xyz is only for .eth domains
-        toast("Shift+Enter opens .eth.xyz profile pages for .eth domains only", 3000);
+        // For non-eth domains, show a message that app.ens.domains is only for .eth domains
+        toast("Shift+Enter opens app.ens.domains profile pages for .eth domains only", 3000);
     }
 }
 
@@ -626,7 +631,7 @@ const typewriterEffect = async (element, text, speed = 100) => {
     await new Promise(resolve => setTimeout(resolve, 200));
 };
 
-const display = async (info, profilePicture = null, chainInfo = null) => {
+const display = async (info, profilePicture = null, chainInfo = null, dnssecInfo = null) => {
     if (!lblValue || !lblHidden) {
         console.log("Display elements not ready");
         return;
@@ -655,6 +660,16 @@ const display = async (info, profilePicture = null, chainInfo = null) => {
         await typewriterEffect(lblValue, info, 80);
         lblHidden.innerHTML = info;
 
+        // Show DNSSEC trust indicator inline with the address
+        console.log('🎯 DNSSEC info:', dnssecInfo);
+        if (dnssecInfo && dnssecInfo.isValid) {
+            showInlineTrustIndicator('DNSSEC Validated', 'success');
+        } else if (dnssecInfo && !dnssecInfo.isValid) {
+            showInlineTrustIndicator('No DNSSEC', 'warning');
+        } else {
+            console.log('❌ No DNSSEC info available');
+        }
+
         // Wait a bit before copying to clipboard
         setTimeout(() => {
             copy();
@@ -669,6 +684,150 @@ const display = async (info, profilePicture = null, chainInfo = null) => {
     }
 };
 
+// Show inline trust indicator in the resolved address section
+const showInlineTrustIndicator = (message, type) => {
+
+    // Remove existing trust indicator
+    const existingIndicator = document.getElementById('inlineTrustIndicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    // Find the container that comes after the keyboard shortcuts section
+    let targetContainer = null;
+
+    // Look for the keyboard shortcuts section first
+    const keyboardShortcuts = document.querySelector('.keyboard-shortcuts') ||
+        document.querySelector('[class*="shortcut"]') ||
+        document.querySelector('div:contains("Keyboard Shortcuts")') ||
+        Array.from(document.querySelectorAll('div')).find(div =>
+            div.textContent?.includes('Keyboard Shortcuts') ||
+            div.textContent?.includes('Tab') ||
+            div.textContent?.includes('Enter')
+        );
+
+    // Hide the keyboard shortcuts section
+    if (keyboardShortcuts) {
+        keyboardShortcuts.style.display = 'none';
+        console.log('🙈 Hidden keyboard shortcuts section');
+    }
+
+    if (keyboardShortcuts) {
+        // Find the next sibling or parent's next sibling
+        targetContainer = keyboardShortcuts.nextElementSibling ||
+            keyboardShortcuts.parentElement?.nextElementSibling ||
+            keyboardShortcuts.parentElement;
+        console.log('📍 Found keyboard shortcuts, target container:', targetContainer);
+    } else {
+        // Fallback: look for the main container
+        targetContainer = document.querySelector('.container') ||
+            document.querySelector('main') ||
+            document.body;
+        console.log('📍 Using fallback container:', targetContainer);
+    }
+
+    if (!targetContainer) {
+        console.log('❌ Could not find target container');
+        return;
+    }
+
+    // Create new inline trust indicator
+    const indicator = document.createElement('div');
+    indicator.id = 'inlineTrustIndicator';
+    indicator.textContent = message; // Use textContent to avoid encoding issues
+    indicator.style.cssText = `
+        display: block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        text-align: center;
+        width: fit-content;
+        margin-left: auto;
+        margin-right: auto;
+        clear: both;
+        position: relative;
+        z-index: 10;
+        ${type === 'success' ?
+            'background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;' :
+            'background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7;'
+        }
+    `;
+
+    // Insert the indicator right after the keyboard shortcuts section
+    if (keyboardShortcuts && keyboardShortcuts.nextElementSibling) {
+        // Insert after the keyboard shortcuts section
+        keyboardShortcuts.parentElement.insertBefore(indicator, keyboardShortcuts.nextElementSibling);
+    } else if (keyboardShortcuts) {
+        // Insert after the keyboard shortcuts section
+        keyboardShortcuts.parentElement.appendChild(indicator);
+    } else {
+        // Fallback: insert at the beginning of the target container
+        targetContainer.insertBefore(indicator, targetContainer.firstChild);
+    }
+
+    console.log('✅ Inline trust indicator added to address section');
+
+    // Auto-remove after 10 seconds and show keyboard shortcuts back
+    setTimeout(() => {
+        if (indicator.parentNode) {
+            indicator.remove();
+            console.log('🗑️ Inline trust indicator removed');
+        }
+
+        // Show the keyboard shortcuts section back
+        if (keyboardShortcuts) {
+            keyboardShortcuts.style.display = '';
+            console.log('👁️ Showing keyboard shortcuts section back');
+        }
+    }, 10000);
+};
+
+// Show trust indicator (keeping the old function for compatibility)
+const showTrustIndicator = (message, type) => {
+    console.log('🎨 Creating trust indicator:', message, type);
+
+    // Remove existing trust indicator
+    const existingIndicator = document.getElementById('trustIndicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    // Create new trust indicator
+    const indicator = document.createElement('div');
+    indicator.id = 'trustIndicator';
+    indicator.textContent = message;
+    indicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 10000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        ${type === 'success' ?
+            'background-color: #d4edda; color: #155724; border: 2px solid #c3e6cb;' :
+            'background-color: #fff3cd; color: #856404; border: 2px solid #ffeaa7;'
+        }
+    `;
+
+    // Add to the popup container
+    const container = document.querySelector('.container') || document.body;
+    container.appendChild(indicator);
+
+    console.log('✅ Trust indicator added to DOM');
+
+    // Auto-remove after 8 seconds (longer for testing)
+    setTimeout(() => {
+        if (indicator.parentNode) {
+            indicator.remove();
+            console.log('🗑️ Trust indicator removed');
+        }
+    }, 8000);
+};
+
 const clearFields = () => {
     if (searchElement) searchElement.value = "";
     if (lblValue) lblValue.innerHTML = "...";
@@ -679,6 +838,30 @@ const clearFields = () => {
     if (profilePicElement && defaultIcon) {
         profilePicElement.style.display = 'none';
         defaultIcon.style.display = 'block';
+    }
+
+    // Clear trust indicators
+    const trustIndicator = document.getElementById('trustIndicator');
+    if (trustIndicator) {
+        trustIndicator.remove();
+    }
+    const inlineTrustIndicator = document.getElementById('inlineTrustIndicator');
+    if (inlineTrustIndicator) {
+        inlineTrustIndicator.remove();
+    }
+
+    // Show keyboard shortcuts back if they were hidden
+    const keyboardShortcuts = document.querySelector('.keyboard-shortcuts') ||
+        document.querySelector('[class*="shortcut"]') ||
+        Array.from(document.querySelectorAll('div')).find(div =>
+            div.textContent?.includes('Keyboard Shortcuts') ||
+            div.textContent?.includes('Tab') ||
+            div.textContent?.includes('Enter')
+        );
+
+    if (keyboardShortcuts && keyboardShortcuts.style.display === 'none') {
+        keyboardShortcuts.style.display = '';
+        console.log('👁️ Showing keyboard shortcuts section back (cleared)');
     }
 
     hideResult();
@@ -949,7 +1132,7 @@ window.onload = async () => {
             event.preventDefault();
             explore();
         }
-        // Shift + Enter: Open on .eth.xyz
+        // Shift + Enter: Open on app.ens.domains
         if (event.shiftKey && event.code === "Enter") {
             event.preventDefault();
             exploreEthXyz();

@@ -64,15 +64,12 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                         .catch(() => null)
                 ];
             } else {
-                // For mainnet, use mainnet APIs
+                // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
-                    fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                    // Try local ENS server with mainnet network
+                    fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
                         .then(r => r.ok ? r.json() : null)
-                        .then(d => d?.address || null)
-                        .catch(() => null),
-                    fetch(`https://api.ens.domains/v1/domains/${domainName}`)
-                        .then(r => r.ok ? r.json() : null)
-                        .then(d => d?.records?.ETH || null)
+                        .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
                 ];
             }
@@ -101,60 +98,21 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 }
                 return null;
             } else {
-                // For mainnet, use .eth.xyz API
-                const nameWithoutTLD = domainName.substring(0, domainName.lastIndexOf('.'));
-                const apiUrl = `https://${nameWithoutTLD}.eth.xyz/text-records/${nameWithoutTLD}.eth`;
-                console.log('Background fetching from:', apiUrl);
-
-                const response = await fetch(apiUrl);
+                // For mainnet, use local ENS server with testnet resolution logic
+                const response = await fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`);
 
                 if (!response.ok) {
-                    console.log('Response not ok:', response.status, response.statusText);
+                    console.log('Local server response not ok:', response.status, response.statusText);
                     return null;
                 }
 
                 const data = await response.json();
-                console.log('Background API response:', data);
+                console.log('Local server response:', data);
 
-                if (!data.success || !data.data) {
-                    console.log('No success or data in response');
-                    return null;
+                if (data.success && data.data && data.data.address) {
+                    return data.data.address;
                 }
-
-                // Handle different data types based on TLD for mainnet
-                if (chainInfo.name === 'name') {
-                    const result = data.data.name || null;
-                    console.log('Background name result:', result);
-                    return result;
-                } else if (chainInfo.name === 'description') {
-                    const result = data.data.description || null;
-                    console.log('Background description result:', result);
-                    return result;
-                } else if (chainInfo.name === 'com.twitter') {
-                    const result = data.data['com.twitter'] || null;
-                    console.log('Background twitter result:', result);
-                    return result;
-                } else if (chainInfo.name === 'com.github') {
-                    const result = data.data['com.github'] || null;
-                    console.log('Background github result:', result);
-                    return result;
-                } else if (chainInfo.name === 'url') {
-                    const result = data.data.url || null;
-                    console.log('Background url result:', result);
-                    return result;
-                } else {
-                    // For wallet addresses, find the matching wallet
-                    if (data.data.wallets && Array.isArray(data.data.wallets)) {
-                        const wallet = data.data.wallets.find(w =>
-                            w.name === chainInfo.name ||
-                            w.name === '' ||
-                            w.name.toLowerCase() === chainInfo.name.toLowerCase()
-                        );
-                        const result = wallet ? wallet.value : null;
-                        console.log('Background wallet result:', result);
-                        return result;
-                    }
-                }
+                return null;
             }
         }
     } catch (error) {
