@@ -191,6 +191,7 @@ async function resolveENS(domainName, network = 'mainnet') {
     const timeout = 5000; // 5 second timeout
     const chain = detectChain(domainName);
 
+
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), timeout);
@@ -198,7 +199,18 @@ async function resolveENS(domainName, network = 'mainnet') {
 
     let promises = [];
 
-    if (chain === 'eth') {
+    // Check if this is an ETH subdomain (.base.eth, .uni.eth, etc.) first
+    const isEthSubdomain = domainName.endsWith('.eth') && domainName.includes('.');
+
+    if (isEthSubdomain) {
+        // For ETH subdomains (.base.eth, .uni.eth, etc.), use ENS Ideas API only
+        promises = [
+            fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                .then(response => response.ok ? response.json() : null)
+                .then(data => data?.address || null)
+                .catch(() => null)
+        ];
+    } else if (chain === 'eth') {
         // For .eth domains, use different APIs based on network
         if (network === 'testnet') {
             // For testnet, use local ENS server only
@@ -220,37 +232,59 @@ async function resolveENS(domainName, network = 'mainnet') {
             ];
         }
     } else {
-        // For other chains, use different APIs based on network
+        // For multi-chain domains (.btc, .sol, .doge, etc.), use local server first
         if (network === 'testnet') {
-            // For testnet, use local ENS server for multi-chain resolution
             promises = [
+                // Try local ENS server for multi-chain resolution
                 fetch(`http://localhost:3001/resolve/${domainName}?network=sepolia`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
+                    .catch(() => null),
+
+                // Fallback: External API
+                fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                    .then(response => response.ok ? response.json() : null)
+                    .then(data => data?.address || null)
                     .catch(() => null)
             ];
         } else {
-            // For mainnet, use local ENS server with testnet resolution logic
             promises = [
+                // Primary: Local ENS server (handles multi-chain)
                 fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
+                    .catch(() => null),
+
+                // Fallback: ENS Ideas API
+                fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                    .then(response => response.ok ? response.json() : null)
+                    .then(data => data?.address || null)
+                    .catch(() => null),
+
+                // Additional fallback: ENS Node API
+                fetch(`https://api.alpha.ensnode.io/name/${domainName}`)
+                    .then(response => response.ok ? response.json() : null)
+                    .then(data => data?.address || data?.resolver?.address || null)
                     .catch(() => null)
             ];
         }
     }
 
     try {
-        // Wait for first successful result or timeout
-        const results = await Promise.race([
-            Promise.all(promises),
-            timeoutPromise
-        ]);
-
-        // Return first non-null result
-        return results.find(result => result !== null) || null;
+        // Try each promise sequentially until one succeeds
+        for (const promise of promises) {
+            try {
+                const result = await Promise.race([promise, timeoutPromise]);
+                if (result) {
+                    return result;
+                }
+            } catch (error) {
+                // Continue to next promise
+                continue;
+            }
+        }
+        return null;
     } catch (error) {
-        console.log("Multi-chain resolution failed:", error);
         return null;
     }
 }
@@ -372,6 +406,10 @@ async function resolve() {
         const address = await resolveENS(domainName, settings.network);
 
         if (address) {
+            // Show success message for debugging
+            if (domainName.includes('.base.eth')) {
+                toast(`✅ Resolved ${domainName}`, 2000);
+            }
             // Fetch profile picture (only for .eth domains and mainnet)
             let profilePicture = null;
             if (chain === 'eth' && settings.network === 'mainnet') {
@@ -898,7 +936,7 @@ let settings = {
 let isResolving = false;
 
 // DOM elements (will be initialized in window.onload)
-let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, settingsBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator;
+let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, settingsBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator, customResolverInput, deployResolverBtn, resolverStatusIndicator, resolverStatusText;
 
 // Load settings from storage
 async function loadSettings() {
@@ -911,6 +949,12 @@ async function loadSettings() {
         // Only set toggle states if elements exist
         if (autoReplaceToggle) {
             autoReplaceToggle.checked = settings.autoReplace;
+        }
+
+        // Load custom resolver if set
+        if (customResolverInput && result.ensResolverSettings?.customResolver) {
+            customResolverInput.value = result.ensResolverSettings.customResolver;
+            validateCustomResolver();
         }
 
         // Set network button states
@@ -1029,6 +1073,111 @@ async function fetchEnsPrice() {
 
 
 
+// Custom Resolver Functions
+function validateCustomResolver() {
+    const resolverUrl = customResolverInput.value.trim();
+    const statusIndicator = resolverStatusIndicator;
+    const statusText = resolverStatusText;
+
+    if (!resolverUrl) {
+        statusIndicator.className = 'status-indicator';
+        statusText.textContent = 'Using default resolver';
+        return;
+    }
+
+    try {
+        new URL(resolverUrl);
+        statusIndicator.className = 'status-indicator';
+        statusText.textContent = 'Custom resolver configured';
+
+        // Save custom resolver to storage
+        chrome.storage.sync.set({
+            customResolver: resolverUrl
+        });
+    } catch (error) {
+        statusIndicator.className = 'status-indicator error';
+        statusText.textContent = 'Invalid URL format';
+    }
+}
+
+async function openRemixWithResolver() {
+    // Solidity code for a basic ENS resolver
+    const resolverCode = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "@ensdomains/ens-contracts/contracts/resolvers/Resolver.sol";
+
+/**
+ * @title Basic ENS Resolver
+ * @dev A simple ENS resolver that can be customized for your needs
+ * @author Fusion ENS
+ */
+contract BasicResolver is Resolver {
+    
+    // Mapping to store addresses for names
+    mapping(bytes32 => address) private addresses;
+    
+    // Events
+    event AddressChanged(bytes32 indexed node, address a);
+    
+    /**
+     * @dev Sets the address for a given ENS name
+     * @param node The ENS node hash
+     * @param a The address to set
+     */
+    function setAddr(bytes32 node, address a) external {
+        addresses[node] = a;
+        emit AddressChanged(node, a);
+    }
+    
+    /**
+     * @dev Returns the address for a given ENS name
+     * @param node The ENS node hash
+     * @return The address associated with the node
+     */
+    function addr(bytes32 node) public view override returns (address) {
+        return addresses[node];
+    }
+    
+    /**
+     * @dev Sets multiple records for a node
+     * @param node The ENS node hash
+     * @param key The record key
+     * @param value The record value
+     */
+    function setText(bytes32 node, string calldata key, string calldata value) external {
+        _setText(node, key, value);
+    }
+    
+    /**
+     * @dev Sets the content hash for a node
+     * @param node The ENS node hash
+     * @param hash The content hash
+     */
+    function setContenthash(bytes32 node, bytes calldata hash) external {
+        _setContenthash(node, hash);
+    }
+}`;
+
+    try {
+        // Copy the code to clipboard
+        await navigator.clipboard.writeText(resolverCode);
+
+        // Open Remix in a new tab
+        chrome.tabs.create({ url: 'https://remix.ethereum.org/' });
+
+        // Show instructions
+        toast('Code copied! Paste it in Remix and create a new file called "BasicResolver.sol"', 5000);
+
+    } catch (error) {
+        console.log('Clipboard copy failed:', error);
+
+        // Fallback: just open Remix
+        chrome.tabs.create({ url: 'https://remix.ethereum.org/' });
+        toast('Opening Remix... Create a new file and use the resolver template from the documentation', 4000);
+    }
+}
+
 // Initialize extension
 window.onload = async () => {
     // Initialize DOM elements
@@ -1047,6 +1196,10 @@ window.onload = async () => {
     mainnetBtn = document.getElementById("mainnetBtn");
     testnetBtn = document.getElementById("testnetBtn");
     networkIndicator = document.getElementById("networkIndicator");
+    customResolverInput = document.getElementById("customResolverInput");
+    deployResolverBtn = document.getElementById("deployResolverBtn");
+    resolverStatusIndicator = document.getElementById("resolverStatusIndicator");
+    resolverStatusText = document.getElementById("resolverStatusText");
 
     // Start rotating ENS names in the title
     rotateEnsName(); // Set initial name
@@ -1056,6 +1209,8 @@ window.onload = async () => {
     explorerBtn.onclick = explore;
     resolveBtn.onclick = resolve;
     copyBtn.onclick = copy;
+    deployResolverBtn.onclick = openRemixWithResolver;
+    customResolverInput.addEventListener('input', validateCustomResolver);
     settingsBtn.onclick = () => {
         settingsModal.style.display = "flex";
     };
