@@ -488,7 +488,30 @@ body {
 }
 
 .copy-btn:hover,
-.explorer-btn:hover {
+.explorer-btn:hover,
+.efp-btn:hover {
+    background: white;
+    color: var(--ens-blue);
+    transform: scale(1.05);
+}
+
+.efp-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    padding: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.efp-btn:hover {
     background: white;
     color: var(--ens-blue);
     transform: scale(1.05);

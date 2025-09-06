@@ -512,6 +512,36 @@ async function explore() {
     }
 }
 
+async function openEfp() {
+    if (!searchElement) return;
+
+    const userInput = searchElement.value.trim();
+
+    if (!userInput) {
+        toast("Please enter a domain name first", 3000);
+        return;
+    }
+
+    if (invalidChars.test(userInput)) {
+        toast("Request contains invalid characters", 3000);
+        return;
+    }
+
+    let domainName = userInput;
+    if (!domainName.includes('.')) {
+        domainName = domainName + '.eth';
+    }
+
+    // Only open EFP for .eth domains
+    if (!domainName.endsWith('.eth')) {
+        toast("EFP is only available for .eth domains", 3000);
+        return;
+    }
+
+    // Open EFP (Ethereum Farcaster Profile) for the domain
+    chrome.tabs.create({ url: `https://efp.app/${domainName}` });
+}
+
 async function exploreEthXyz() {
     if (!searchElement) return;
 
@@ -651,6 +681,15 @@ const showResult = (address, chainInfo) => {
         const resultLabel = resultCard.querySelector('.result-label');
         if (resultLabel) {
             resultLabel.textContent = `Resolved ${chainInfo.displayName} Address`;
+        }
+
+        // Show/hide EFP button based on whether it's an .eth domain
+        if (efpBtn) {
+            if (chainInfo.name === 'ethereum') {
+                efpBtn.style.display = 'flex';
+            } else {
+                efpBtn.style.display = 'none';
+            }
         }
     }
 };
@@ -936,7 +975,7 @@ let settings = {
 let isResolving = false;
 
 // DOM elements (will be initialized in window.onload)
-let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, settingsBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator, customResolverInput, deployResolverBtn, resolverStatusIndicator, resolverStatusText;
+let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, efpBtn, settingsBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator, customResolverInput, deployResolverBtn, resolverStatusIndicator, resolverStatusText;
 
 // Load settings from storage
 async function loadSettings() {
@@ -1188,6 +1227,7 @@ window.onload = async () => {
     lblHidden = document.getElementById("lblHidden");
     copyBtn = document.getElementById("copyBtn");
     explorerBtn = document.getElementById("btnExplorer");
+    efpBtn = document.getElementById("btnEfp");
     settingsBtn = document.getElementById("settingsBtn");
     settingsModal = document.getElementById("settingsModal");
     closeSettingsBtn = document.getElementById("closeSettingsBtn");
@@ -1207,6 +1247,7 @@ window.onload = async () => {
 
     // Set up event listeners
     explorerBtn.onclick = explore;
+    efpBtn.onclick = openEfp;
     resolveBtn.onclick = resolve;
     copyBtn.onclick = copy;
     deployResolverBtn.onclick = openRemixWithResolver;
