@@ -5,11 +5,11 @@ const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9]
 const rotatingEnsNames = [
     'ABENA.ETH',
     'FRED.UNI.ETH',
-    'SES.SOL',
-    'FRANZ.BTC',
+    'SES.X',
+    'FRANZ.DOT',
     'VITALIK.ETH',
-    'CHARLIE.SOL',
-    'ADAM.BASE.ETH',
+    'ONSHOW.SOL',
+    'JESSE.BASE.ETH',
 ];
 
 let currentEnsIndex = 0;
