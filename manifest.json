@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Fusion ENS",
     "version": "1.0",
-    "description": "The best ENS resolver. Resolve multichain addresses quickly and easily",
+    "description": "ENS Everywhere! Resolve addresses across blockchains including Bitcoin, Solana, Dogecoin, and more. Features smart autocomplete, profile pictures, and real-time security validation.",
     "permissions": [
       "activeTab",
       "clipboardWrite",
