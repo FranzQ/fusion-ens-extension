@@ -20,7 +20,7 @@ A powerful browser extension for resolving ENS names across multiple chains with
 - **Tab Completion**: Press Tab to auto-complete selected chain
 
 ### 🎯 **Smart Resolution**
-- **Local server integration** for mainnet and testnet
+- **Fusion ENS API integration** for mainnet and testnet
 - **Fallback mechanisms** for reliability
 - **Profile picture support** for .eth domains
 - **Auto-copy** resolved addresses
@@ -106,7 +106,7 @@ A powerful browser extension for resolving ENS names across multiple chains with
 ### **Network Support**
 - **Mainnet**: Full ENS resolution with DNSSEC
 - **Testnet**: Sepolia testnet support
-- **Local Server**: Custom ENS resolution server
+- **Fusion ENS API**: Production ENS resolution server
 
 ---
 
@@ -122,7 +122,7 @@ A powerful browser extension for resolving ENS names across multiple chains with
 
 ## 🔧 Technical Details
 
-- **Local ENS Server**: Custom resolution server for enhanced control
+- **Fusion ENS API**: Production resolution server for enhanced control
 - **Multi-chain Support**: 14+ supported blockchain networks with proper address decoding
 - **Smart Autocomplete**: Intuitive chain suggestion system with keyboard navigation
 - **DNSSEC Integration**: Real-time security validation for .eth domains

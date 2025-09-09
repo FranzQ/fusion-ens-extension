@@ -99,7 +99,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For testnet, use local ENS server only
                 promises = [
                     // Try local ENS testnet server
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -108,7 +108,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
                     // Try local ENS server with mainnet network
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -124,7 +124,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
             // For other TLDs, use different APIs based on network
             if (network === 'testnet') {
                 // For testnet, use local ENS server for multi-chain resolution
-                const response = await fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`);
+                const response = await fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`);
 
                 if (!response.ok) {
                     return null;
@@ -138,7 +138,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 return null;
             } else {
                 // For mainnet, use local ENS server with testnet resolution logic
-                const response = await fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`);
+                const response = await fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`);
 
                 if (!response.ok) {
                     return null;

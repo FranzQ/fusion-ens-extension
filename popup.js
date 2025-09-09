@@ -263,14 +263,14 @@ async function resolveENS(domainName, network = 'mainnet') {
         // Use local server for text records (.x, .url, .github, etc.)
         if (network === 'testnet') {
             promises = [
-                fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         } else {
             promises = [
-                fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
@@ -294,7 +294,7 @@ async function resolveENS(domainName, network = 'mainnet') {
                 // For testnet, use local ENS server only
                 promises = [
                     // Try local ENS testnet server
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null)
@@ -303,7 +303,7 @@ async function resolveENS(domainName, network = 'mainnet') {
                 // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
                     // Try local ENS server with mainnet network
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null)
@@ -314,7 +314,7 @@ async function resolveENS(domainName, network = 'mainnet') {
             if (network === 'testnet') {
                 promises = [
                     // Try local ENS server for multi-chain resolution
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
@@ -328,7 +328,7 @@ async function resolveENS(domainName, network = 'mainnet') {
             } else {
                 promises = [
                     // Primary: Local ENS server (handles multi-chain)
-                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
@@ -501,7 +501,7 @@ async function resolve() {
 
                     // Get the Ethereum address for avatar lookup
                     try {
-                        const ethResponse = await fetch(`http://localhost:3001/resolve/${baseDomain}?network=mainnet`);
+                        const ethResponse = await fetch(`https://api.fusionens.com/resolve/${baseDomain}?network=mainnet`);
                         if (ethResponse.ok) {
                             const ethData = await ethResponse.json();
                             if (ethData.success) {
