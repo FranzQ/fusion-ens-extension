@@ -34,17 +34,13 @@
     <div id="mainContent" class="main-content">
       <div class="header">
         <div class="header-left">
-          <div class="ens-logo-small">
-            <svg width="32" height="32" viewBox="0 0 202 231" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M98.3592 2.80337L34.8353 107.327C34.3371 108.147 33.1797 108.238 32.5617 107.505C26.9693 100.864 6.13478 72.615 31.9154 46.8673C55.4403 23.3726 85.4045 6.62129 96.5096 0.831705C97.7695 0.174847 99.0966 1.59007 98.3592 2.80337Z" fill="#0080BC"/>
-              <path d="M94.8459 230.385C96.1137 231.273 97.6758 229.759 96.8261 228.467C82.6374 206.886 35.4713 135.081 28.9559 124.302C22.5295 113.67 9.88976 96.001 8.83534 80.8842C8.7301 79.3751 6.64332 79.0687 6.11838 80.4879C5.27178 82.7767 4.37045 85.5085 3.53042 88.6292C-7.07427 128.023 8.32698 169.826 41.7753 193.238L94.8459 230.386V230.385Z" fill="#0080BC"/>
-              <path d="M103.571 228.526L167.095 124.003C167.593 123.183 168.751 123.092 169.369 123.825C174.961 130.465 195.796 158.715 170.015 184.463C146.49 207.957 116.526 224.709 105.421 230.498C104.161 231.155 102.834 229.74 103.571 228.526Z" fill="#0080BC"/>
-              <path d="M107.154 0.930762C105.886 0.0433954 104.324 1.5567 105.174 2.84902C119.363 24.4301 166.529 96.2354 173.044 107.014C179.471 117.646 192.11 135.315 193.165 150.432C193.27 151.941 195.357 152.247 195.882 150.828C196.728 148.539 197.63 145.808 198.47 142.687C209.074 103.293 193.673 61.4905 160.225 38.078L107.154 0.930762Z" fill="#0080BC"/>
-            </svg>
+          <div class="header-logo">
+            <a href="https://fusionens.com" target="_blank" rel="noopener noreferrer">
+              <img src="images/Logo.png" alt="Fusion ENS Logo" width="120" />
+            </a>
           </div>
           <div class="header-text">
-                    <h3>Fusion ENS</h3>
-        <p>Resolve ENS names across chains | <span id="rotatingEnsName">abena.eth</span></p>
+        <p>Resolve ENS Everywhere | <span id="rotatingEnsName">abena.eth</span></p>
         <div class="network-indicator-header" id="networkIndicator">
           <span class="network-dot mainnet"></span>
           <span class="network-text">Mainnet</span>
@@ -110,7 +106,7 @@
                 <span class="separator">|</span>
                 <span class="shortcut">:</span> for chain suggestions
                 <span class="separator">|</span>
-                <span class="shortcut">↑↓</span> to navigate
+                <span class="shortcut">&uarr; &darr;</span> to navigate
               </div>
               <div class="shortcut-line">
                 <span class="shortcut">Enter</span> to resolve
@@ -125,6 +121,29 @@
           <div class="result-card" id="resultCard" style="display: none;">
             <div class="result-header">
               <h5 class="result-label">Resolved Address</h5>
+              <div class="action-buttons">
+                <button class="copy-btn" id="copyBtn" title="Copy to clipboard">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24264C20 6.97742 19.8946 6.7228 19.7071 6.53553L16.4645 3.29289C16.2772 3.10536 16.0226 3 15.7574 3H10C8.89543 3 8 3.89543 8 5V4Z" stroke="currentColor" stroke-width="2"/>
+                    <path d="M16 18V20C16 21.1046 15.1046 22 14 22H6C4.89543 22 4 21.1046 4 20V8C4 6.89543 4.89543 6 6 6H8" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </button>
+                <button class="explorer-btn" id="btnExplorer" title="View on explorer">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M15 3h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <button class="efp-btn" id="btnEfp" title="View on EFP (Ethereum Farcaster Profile)" style="display: none;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="M20 8V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M23 11H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="result-content">
               <div class="avatar-section">
@@ -138,27 +157,6 @@
               <div class="result-info">
                 <div class="address-container">
                   <p class="result-value" id="lblValue">...</p>
-                  <button class="copy-btn" id="copyBtn" title="Copy to clipboard">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 4V16C8 17.1046 8.89543 18 10 18H18C19.1046 18 20 17.1046 20 16V7.24264C20 6.97742 19.8946 6.7228 19.7071 6.53553L16.4645 3.29289C16.2772 3.10536 16.0226 3 15.7574 3H10C8.89543 3 8 3.89543 8 5V4Z" stroke="currentColor" stroke-width="2"/>
-                      <path d="M16 18V20C16 21.1046 15.1046 22 14 22H6C4.89543 22 4 21.1046 4 20V8C4 6.89543 4.89543 6 6 6H8" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                  </button>
-                  <button class="explorer-btn" id="btnExplorer" title="View on explorer">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M15 3h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M10 14L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </button>
-                  <button class="efp-btn" id="btnEfp" title="View on EFP (Ethereum Farcaster Profile)" style="display: none;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
-                      <path d="M20 8V14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M23 11H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </button>
                 </div>
               </div>
             </div>
@@ -182,18 +180,6 @@
             </div>
           </div>
           
-          <a
-            href="https://app.ens.domains/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="footer-link"
-          >
-            <span>Get an ENS Name</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 17L17 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M7 7H17V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
         </div>
       </div>
     </div>
@@ -242,7 +228,7 @@
             </div>
           </div>
 
-          <div class="setting-item">
+          <div class="setting-item" style="display: none;">
             <div class="setting-info">
               <h4>Custom Resolver</h4>
               <p>Advanced resolution</p>

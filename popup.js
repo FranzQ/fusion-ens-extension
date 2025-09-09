@@ -1094,12 +1094,13 @@ const display = async (info, profilePicture = null, chainInfo = null, dnssecInfo
         await typewriterEffect(lblValue, info, 80);
         lblHidden.innerHTML = info;
 
-        // Show DNSSEC trust indicator inline with the address
+        // Show DNSSEC trust indicator in footer
         if (dnssecInfo && dnssecInfo.isValid) {
-            showInlineTrustIndicator('DNSSEC Validated', 'success');
+            showFooterTrustIndicator('DNSSEC Validated', 'success');
         } else if (dnssecInfo && !dnssecInfo.isValid) {
-            showInlineTrustIndicator('No DNSSEC', 'warning');
+            showFooterTrustIndicator('No DNSSEC', 'warning');
         } else {
+            hideFooterTrustIndicator();
         }
 
         // Wait a bit before copying to clipboard
@@ -1249,6 +1250,53 @@ const showTrustIndicator = (message, type) => {
     }, 8000);
 };
 
+// Show DNSSEC trust indicator in footer
+const showFooterTrustIndicator = (message, type) => {
+    // Remove existing footer trust indicator
+    const existingIndicator = document.getElementById('footerTrustIndicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+
+    // Create new footer trust indicator
+    const indicator = document.createElement('div');
+    indicator.id = 'footerTrustIndicator';
+    indicator.textContent = message;
+
+    const bgColor = type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)';
+    const borderColor = type === 'success' ? 'rgba(34, 197, 94, 0.5)' : 'rgba(245, 158, 11, 0.5)';
+    const textColor = type === 'success' ? '#22c55e' : '#f59e0b';
+
+    indicator.style.cssText = `
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+        background: ${bgColor};
+        border: 1px solid ${borderColor};
+        color: ${textColor};
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    `;
+
+    // Add to footer
+    const footer = document.querySelector('.footer');
+    if (footer) {
+        footer.appendChild(indicator);
+    }
+};
+
+// Hide footer trust indicator
+const hideFooterTrustIndicator = () => {
+    const indicator = document.getElementById('footerTrustIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+};
+
 const clearFields = () => {
     if (searchElement) searchElement.value = "";
     if (lblValue) lblValue.innerHTML = "...";
@@ -1266,6 +1314,9 @@ const clearFields = () => {
     if (trustIndicator) {
         trustIndicator.remove();
     }
+
+    // Clear footer trust indicator
+    hideFooterTrustIndicator();
     const inlineTrustIndicator = document.getElementById('inlineTrustIndicator');
     if (inlineTrustIndicator) {
         inlineTrustIndicator.remove();
@@ -1312,11 +1363,11 @@ async function loadSettings() {
             autoReplaceToggle.checked = settings.autoReplace;
         }
 
-        // Load custom resolver if set
-        if (customResolverInput && result.ensResolverSettings?.customResolver) {
-            customResolverInput.value = result.ensResolverSettings.customResolver;
-            validateCustomResolver();
-        }
+        // Load custom resolver if set (DISABLED)
+        // if (customResolverInput && result.ensResolverSettings?.customResolver) {
+        //     customResolverInput.value = result.ensResolverSettings.customResolver;
+        //     validateCustomResolver();
+        // }
 
         // Set network button states
         if (mainnetBtn && testnetBtn) {
@@ -1429,31 +1480,34 @@ async function fetchEnsPrice() {
 
 
 
-// Custom Resolver Functions
+// Custom Resolver Functions (DISABLED)
 function validateCustomResolver() {
-    const resolverUrl = customResolverInput.value.trim();
-    const statusIndicator = resolverStatusIndicator;
-    const statusText = resolverStatusText;
+    // Custom resolver functionality is disabled
+    return;
 
-    if (!resolverUrl) {
-        statusIndicator.className = 'status-indicator';
-        statusText.textContent = 'Using default resolver';
-        return;
-    }
+    // const resolverUrl = customResolverInput.value.trim();
+    // const statusIndicator = resolverStatusIndicator;
+    // const statusText = resolverStatusText;
 
-    try {
-        new URL(resolverUrl);
-        statusIndicator.className = 'status-indicator';
-        statusText.textContent = 'Custom resolver configured';
+    // if (!resolverUrl) {
+    //     statusIndicator.className = 'status-indicator';
+    //     statusText.textContent = 'Using default resolver';
+    //     return;
+    // }
 
-        // Save custom resolver to storage
-        chrome.storage.sync.set({
-            customResolver: resolverUrl
-        });
-    } catch (error) {
-        statusIndicator.className = 'status-indicator error';
-        statusText.textContent = 'Invalid URL format';
-    }
+    // try {
+    //     new URL(resolverUrl);
+    //     statusIndicator.className = 'status-indicator';
+    //     statusText.textContent = 'Custom resolver configured';
+
+    //     // Save custom resolver to storage
+    //     chrome.storage.sync.set({
+    //         customResolver: resolverUrl
+    //     });
+    // } catch (error) {
+    //     statusIndicator.className = 'status-indicator error';
+    //     statusText.textContent = 'Invalid URL format';
+    // }
 }
 
 async function openRemixWithResolver() {
@@ -1566,8 +1620,8 @@ window.onload = async () => {
     efpBtn.onclick = openEfp;
     resolveBtn.onclick = resolve;
     copyBtn.onclick = copy;
-    deployResolverBtn.onclick = openRemixWithResolver;
-    customResolverInput.addEventListener('input', validateCustomResolver);
+    // deployResolverBtn.onclick = openRemixWithResolver; // DISABLED
+    // customResolverInput.addEventListener('input', validateCustomResolver); // DISABLED
     settingsBtn.onclick = () => {
         settingsModal.style.display = "flex";
     };
