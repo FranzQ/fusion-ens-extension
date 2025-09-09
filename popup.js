@@ -1,14 +1,12 @@
 const invalidChars = /[!@#$%^&*()+\=\[\]{};'"\\|,<>\/?]+/;
-const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*\.[a-zA-Z0-9]+$/;
+// Updated regex to support both old format (name.chain) and new format (name.eth:chain)
+const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*(\.[a-zA-Z0-9]+)?(:[a-zA-Z0-9]+)?$/;
 
 // Rotating ENS names for the title
 const rotatingEnsNames = [
     'ABENA.ETH',
-    'FRED.UNI.ETH',
-    'SES.X',
-    'FRANZ.DOT',
-    'VITALIK.ETH',
-    'ONSHOW.SOL',
+    'SES.ETH:X',
+    'ONSHOW.ETH:SOL',
     'JESSE.BASE.ETH',
 ];
 
@@ -176,11 +174,68 @@ const chainConfig = {
     }
 };
 
-// Detect chain from domain name
-function detectChain(domainName) {
+// Convert domain name to new format (name.eth:chain) if needed
+function convertToNewFormat(domainName) {
+    // If already in new format (name.eth:chain), return as-is
+    if (domainName.includes(':') && domainName.includes('.eth:')) {
+        return domainName;
+    }
+
+    // Handle shortcut format (name:chain) - auto-insert .eth
+    const shortcutMatch = domainName.match(/^([^:]+):([^:]+)$/);
+    if (shortcutMatch) {
+        const [, name, chain] = shortcutMatch;
+        return `${name}.eth:${chain}`;
+    }
+
+    // Handle old format (name.chain) - convert to new format
     const match = domainName.match(/\.([^.]+)$/);
     if (match && chainConfig[match[1]]) {
-        return match[1];
+        const tld = match[1];
+        const nameWithoutTLD = domainName.replace(`.${tld}`, '');
+
+        // For .eth domains, return as-is
+        if (tld === 'eth') {
+            return domainName;
+        }
+
+        // For other chains, convert to new format
+        return `${nameWithoutTLD}.eth:${tld}`;
+    }
+
+    // If no TLD or unsupported, add .eth
+    if (!domainName.includes('.')) {
+        return domainName + '.eth';
+    }
+
+    return domainName;
+}
+
+// Detect chain from domain name - supports new format (name.eth:chain), shortcut format (name:chain), and old format (name.chain)
+function detectChain(domainName) {
+    // Check for new format (name.eth:chain) or shortcut format (name:chain)
+    const colonIndex = domainName.lastIndexOf(':');
+    if (colonIndex !== -1) {
+        const targetChain = domainName.substring(colonIndex + 1);
+        // Check if this is a text record (like :x, :url, :github) that should be resolved as .eth
+        if (['x', 'url', 'github', 'name', 'bio'].includes(targetChain)) {
+            return 'eth'; // Treat as .eth domain for resolution
+        }
+        if (chainConfig[targetChain]) {
+            return targetChain;
+        }
+        return null; // Return null if chain not recognized
+    }
+
+    // Handle old format (name.chain) - backward compatibility
+    const match = domainName.match(/\.([^.]+)$/);
+    if (match && chainConfig[match[1]]) {
+        // Check if this is a text record (like .x, .url, .github) that should be resolved as .eth
+        const tld = match[1];
+        if (['x', 'url', 'github', 'name', 'bio'].includes(tld)) {
+            return 'eth'; // Treat as .eth domain for resolution
+        }
+        return tld;
     }
     // If TLD is not supported, return null to indicate unsupported chain
     return null;
@@ -191,6 +246,8 @@ async function resolveENS(domainName, network = 'mainnet') {
     const timeout = 5000; // 5 second timeout
     const chain = detectChain(domainName);
 
+    // Convert to new format for server requests
+    const serverDomainName = convertToNewFormat(domainName);
 
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) => {
@@ -199,74 +256,96 @@ async function resolveENS(domainName, network = 'mainnet') {
 
     let promises = [];
 
-    // Check if this is an ETH subdomain (.base.eth, .uni.eth, etc.) first
-    const isEthSubdomain = domainName.endsWith('.eth') && domainName.includes('.');
+    // Check if this is a text record (like .x, .url, .github) that should be resolved from .eth
+    const isTextRecord = ['x', 'url', 'github', 'name', 'bio'].some(tld => domainName.endsWith(`.${tld}`));
 
-    if (isEthSubdomain) {
-        // For ETH subdomains (.base.eth, .uni.eth, etc.), use ENS Ideas API only
-        promises = [
-            fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
-                .then(response => response.ok ? response.json() : null)
-                .then(data => data?.address || null)
-                .catch(() => null)
-        ];
-    } else if (chain === 'eth') {
-        // For .eth domains, use different APIs based on network
+    if (isTextRecord) {
+        // Use local server for text records (.x, .url, .github, etc.)
         if (network === 'testnet') {
-            // For testnet, use local ENS server only
             promises = [
-                // Try local ENS testnet server
-                fetch(`http://localhost:3001/resolve/${domainName}?network=sepolia`)
+                fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         } else {
-            // For mainnet, use local ENS server with testnet resolution logic
             promises = [
-                // Try local ENS server with mainnet network
-                fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
+                fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         }
     } else {
-        // For multi-chain domains (.btc, .sol, .doge, etc.), use local server first
-        if (network === 'testnet') {
-            promises = [
-                // Try local ENS server for multi-chain resolution
-                fetch(`http://localhost:3001/resolve/${domainName}?network=sepolia`)
-                    .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.success ? data.data.address : null)
-                    .catch(() => null),
+        // Check if this is an ETH subdomain (.base.eth, .uni.eth, etc.) first
+        const isEthSubdomain = domainName.endsWith('.eth') && domainName.includes('.');
 
-                // Fallback: External API
+        if (isEthSubdomain) {
+            // For ETH subdomains (.base.eth, .uni.eth, etc.), use ENS Ideas API only
+            promises = [
                 fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.address || null)
                     .catch(() => null)
             ];
+        } else if (chain === 'eth') {
+            // For .eth domains, use different APIs based on network
+            if (network === 'testnet') {
+                // For testnet, use local ENS server only
+                promises = [
+                    // Try local ENS testnet server
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.success ? data.data.address : null)
+                        .catch(() => null)
+                ];
+            } else {
+                // For mainnet, use local ENS server with testnet resolution logic
+                promises = [
+                    // Try local ENS server with mainnet network
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.success ? data.data.address : null)
+                        .catch(() => null)
+                ];
+            }
         } else {
-            promises = [
-                // Primary: Local ENS server (handles multi-chain)
-                fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
-                    .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.success ? data.data.address : null)
-                    .catch(() => null),
+            // For multi-chain domains (.btc, .sol, .doge, etc.), use local server first
+            if (network === 'testnet') {
+                promises = [
+                    // Try local ENS server for multi-chain resolution
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.success ? data.data.address : null)
+                        .catch(() => null),
 
-                // Fallback: ENS Ideas API
-                fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
-                    .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.address || null)
-                    .catch(() => null),
+                    // Fallback: External API (keep original format for external APIs)
+                    fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.address || null)
+                        .catch(() => null)
+                ];
+            } else {
+                promises = [
+                    // Primary: Local ENS server (handles multi-chain)
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.success ? data.data.address : null)
+                        .catch(() => null),
 
-                // Additional fallback: ENS Node API
-                fetch(`https://api.alpha.ensnode.io/name/${domainName}`)
-                    .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.address || data?.resolver?.address || null)
-                    .catch(() => null)
-            ];
+                    // Fallback: ENS Ideas API (keep original format for external APIs)
+                    fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.address || null)
+                        .catch(() => null),
+
+                    // Additional fallback: ENS Node API (keep original format for external APIs)
+                    fetch(`https://api.alpha.ensnode.io/name/${domainName}`)
+                        .then(response => response.ok ? response.json() : null)
+                        .then(data => data?.address || data?.resolver?.address || null)
+                        .catch(() => null)
+                ];
+            }
         }
     }
 
@@ -292,7 +371,6 @@ async function resolveENS(domainName, network = 'mainnet') {
 // DNSSEC validation function
 async function validateDNSSEC(domainName) {
     try {
-        console.log('🔍 Validating DNSSEC for:', domainName);
 
         // Use Cloudflare's DNS-over-HTTPS with DNSSEC validation
         const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${domainName}&type=A&do=1`, {
@@ -302,24 +380,20 @@ async function validateDNSSEC(domainName) {
         });
 
         if (!response.ok) {
-            console.log('❌ DNS query failed:', response.status);
             return { isValid: false, reason: 'DNS query failed' };
         }
 
         const data = await response.json();
-        console.log('📡 DNS response:', data);
 
         // Check if DNSSEC validation was performed
         const hasDNSSEC = data.AD === true; // AD flag indicates DNSSEC validation
 
-        console.log('🔒 DNSSEC validation result:', hasDNSSEC);
 
         return {
             isValid: hasDNSSEC,
             reason: hasDNSSEC ? 'DNSSEC validated' : 'No DNSSEC validation'
         };
     } catch (error) {
-        console.log('❌ DNSSEC validation error:', error);
         return { isValid: false, reason: 'Validation failed' };
     }
 }
@@ -347,19 +421,16 @@ async function fetchProfilePicture(ensName, address) {
 
         return null;
     } catch (error) {
-        console.log("Error fetching profile picture:", error);
         return null;
     }
 }
 
 async function resolve() {
     if (isResolving) {
-        console.log("Already resolving, please wait");
         return;
     }
 
     if (!searchElement || !lblValue || !lblHidden) {
-        console.log("DOM elements not ready");
         return;
     }
 
@@ -410,20 +481,43 @@ async function resolve() {
             if (domainName.includes('.base.eth')) {
                 toast(`✅ Resolved ${domainName}`, 2000);
             }
-            // Fetch profile picture (only for .eth domains and mainnet)
+            // Fetch profile picture (always for .eth domains on mainnet, regardless of target chain)
             let profilePicture = null;
-            if (chain === 'eth' && settings.network === 'mainnet') {
-                profilePicture = await fetchProfilePicture(domainName, address);
+            if (settings.network === 'mainnet') {
+                // For multi-chain resolution, we need to get the Ethereum address for avatar lookup
+                let ethAddress = address;
+                let baseDomain = domainName;
+
+                if (chain !== 'eth') {
+                    // Extract base domain from new format (name.eth:chain) or shortcut format (name:chain)
+                    const colonIndex = domainName.lastIndexOf(':');
+                    if (colonIndex !== -1) {
+                        baseDomain = domainName.substring(0, colonIndex);
+                        // If it's shortcut format, add .eth
+                        if (!baseDomain.includes('.eth')) {
+                            baseDomain = baseDomain + '.eth';
+                        }
+                    }
+
+                    // Get the Ethereum address for avatar lookup
+                    try {
+                        const ethResponse = await fetch(`http://localhost:3001/resolve/${baseDomain}?network=mainnet`);
+                        if (ethResponse.ok) {
+                            const ethData = await ethResponse.json();
+                            if (ethData.success) {
+                                ethAddress = ethData.data.address;
+                            }
+                        }
+                    } catch (error) {
+                    }
+                }
+                profilePicture = await fetchProfilePicture(baseDomain, ethAddress);
             }
 
             // Validate DNSSEC for .eth domains
             let dnssecInfo = null;
             if (chain === 'eth') {
-                console.log('🔍 Starting DNSSEC validation for .eth domain:', domainName);
                 dnssecInfo = await validateDNSSEC(domainName);
-                console.log('🔍 DNSSEC validation completed:', dnssecInfo);
-            } else {
-                console.log('⏭️ Skipping DNSSEC validation for non-eth domain:', chain);
             }
 
             // Display result with chain information
@@ -432,13 +526,22 @@ async function resolve() {
             await display(address, profilePicture, chainInfo, dnssecInfo);
         } else if (chain !== 'eth') {
             // For non-eth chains, try to get the .eth address as fallback
-            const nameWithoutTLD = domainName.replace(/\.[^.]+$/, '');
-            const ensName = nameWithoutTLD + '.eth';
+            let ensName;
+
+            // Handle new format (name.eth:chain) vs old format (name.chain)
+            if (domainName.includes(':')) {
+                // New format: extract base domain before colon
+                ensName = domainName.substring(0, domainName.lastIndexOf(':'));
+            } else {
+                // Old format: replace TLD with .eth
+                const nameWithoutTLD = domainName.replace(/\.[^.]+$/, '');
+                ensName = nameWithoutTLD + '.eth';
+            }
 
             // Try to resolve the .eth version
             const ethAddress = await resolveENS(ensName, settings.network);
             if (ethAddress) {
-                toast(`${chainConfig[chain].displayName} address not found, but ${nameWithoutTLD}.eth resolves to ${ethAddress}`, 4000);
+                toast(`${chainConfig[chain].displayName} address not found, but ${ensName} resolves to ${ethAddress}`, 4000);
             } else {
                 toast(`${chainConfig[chain].displayName} address not found`, 3000);
             }
@@ -450,7 +553,6 @@ async function resolve() {
             }
         }
     } catch (error) {
-        console.log("Error during resolution:", error);
         toast("Error resolving ENS name", 3000);
     } finally {
         hideLoading();
@@ -478,7 +580,61 @@ async function explore() {
         domainName = domainName + '.eth';
     }
 
-    // Detect chain and resolve the domain name
+    // Check for new format (name.eth:record) or shortcut format (name:record) first
+    const colonIndex = domainName.lastIndexOf(':');
+    if (colonIndex !== -1) {
+        const baseDomain = domainName.substring(0, colonIndex);
+        const recordType = domainName.substring(colonIndex + 1);
+
+        // Convert shortcut format to new format for resolution
+        const serverDomainName = convertToNewFormat(domainName);
+
+        // Check if this is a text record
+        if (['x', 'url', 'github', 'name', 'bio'].includes(recordType)) {
+            const address = await resolveENS(serverDomainName, settings.network);
+            if (address) {
+                if (recordType === 'url') {
+                    // For URLs, open the website directly
+                    chrome.tabs.create({ url: address });
+                } else if (recordType === 'github') {
+                    // For GitHub, open the GitHub profile
+                    chrome.tabs.create({ url: `https://github.com/${address}` });
+                } else if (recordType === 'x') {
+                    // For Twitter/X, open the profile
+                    chrome.tabs.create({ url: `https://x.com/${address}` });
+                } else {
+                    // For name/bio, just copy to clipboard
+                    navigator.clipboard.writeText(address);
+                    toast(`${recordType} copied to clipboard`, 2000);
+                }
+            } else {
+                toast(`${recordType} record not found`, 3000);
+            }
+            return;
+        }
+
+        // Check if this is a supported chain
+        if (chainConfig[recordType]) {
+            const address = await resolveENS(serverDomainName, settings.network);
+            if (address) {
+                const chainInfo = chainConfig[recordType];
+                if (chainInfo.explorer) {
+                    chrome.tabs.create({ url: `${chainInfo.explorer}${address}` });
+                } else {
+                    navigator.clipboard.writeText(address);
+                    toast(`${chainInfo.displayName} copied to clipboard`, 2000);
+                }
+            } else {
+                toast(`${chainInfo.displayName} address not found`, 3000);
+            }
+            return;
+        }
+
+        toast(`Unsupported record type: ${recordType}`, 3000);
+        return;
+    }
+
+    // Handle old format (name.chain)
     const chain = detectChain(domainName);
 
     if (!chain) {
@@ -489,23 +645,36 @@ async function explore() {
     const address = await resolveENS(domainName, settings.network);
 
     if (address) {
-        // Open appropriate block explorer for the resolved address
-        const chainInfo = chainConfig[chain];
-        if (chainInfo.explorer) {
-            chrome.tabs.create({ url: `${chainInfo.explorer}${address}` });
-        } else if (chain === 'url') {
-            // For URLs, open the website
-            chrome.tabs.create({ url: address });
-        } else if (chain === 'github') {
-            // For GitHub, open the GitHub profile
-            chrome.tabs.create({ url: `https://github.com/${address}` });
-        } else if (chain === 'x') {
-            // For Twitter/X, open the profile
-            chrome.tabs.create({ url: `https://x.com/${address}` });
+        // Check if this is a text record first
+        const isTextRecord = ['x', 'url', 'github', 'name', 'bio'].some(tld => domainName.endsWith(`.${tld}`));
+
+        if (isTextRecord) {
+            // Handle text records
+            const textRecordType = domainName.split('.').pop();
+            if (textRecordType === 'url') {
+                // For URLs, open the website directly
+                chrome.tabs.create({ url: address });
+            } else if (textRecordType === 'github') {
+                // For GitHub, open the GitHub profile
+                chrome.tabs.create({ url: `https://github.com/${address}` });
+            } else if (textRecordType === 'x') {
+                // For Twitter/X, open the profile
+                chrome.tabs.create({ url: `https://x.com/${address}` });
+            } else {
+                // For name/bio, just copy to clipboard
+                navigator.clipboard.writeText(address);
+                toast(`${textRecordType} copied to clipboard`, 2000);
+            }
         } else {
-            // For name/bio, just copy to clipboard
-            navigator.clipboard.writeText(address);
-            toast(`${chainInfo.displayName} copied to clipboard`, 2000);
+            // Handle regular addresses
+            const chainInfo = chainConfig[chain];
+            if (chainInfo.explorer) {
+                chrome.tabs.create({ url: `${chainInfo.explorer}${address}` });
+            } else {
+                // For name/bio, just copy to clipboard
+                navigator.clipboard.writeText(address);
+                toast(`${chainInfo.displayName} copied to clipboard`, 2000);
+            }
         }
     } else {
         toast(`${chainConfig[chain].displayName} address not found`, 3000);
@@ -596,7 +765,6 @@ const copy = async () => {
             await navigator.clipboard.writeText(lblHidden.innerHTML);
             toast("Copied to clipboard", 2000);
         } catch (error) {
-            console.log('Copy failed:', error);
             // Fallback: try using execCommand for older browsers
             try {
                 const textArea = document.createElement('textarea');
@@ -611,7 +779,6 @@ const copy = async () => {
                 document.body.removeChild(textArea);
                 toast("Copied to clipboard", 2000);
             } catch (fallbackError) {
-                console.log('Fallback copy failed:', fallbackError);
                 toast("Copy failed", 2000);
             }
         }
@@ -624,26 +791,196 @@ const focusInput = () => {
     }
 };
 
-// Auto-complete functionality
+// Available chains and text records for suggestions (prioritized)
+const availableChains = [
+    // Most popular blockchain networks
+    { key: 'btc', name: 'Bitcoin', description: 'BTC' },
+    { key: 'sol', name: 'Solana', description: 'SOL' },
+    { key: 'doge', name: 'Dogecoin', description: 'DOGE' },
+    { key: 'base', name: 'Base', description: 'BASE' },
+    { key: 'arbi', name: 'Arbitrum', description: 'ARB' },
+    { key: 'op', name: 'Optimism', description: 'OP' },
+    { key: 'matic', name: 'Polygon', description: 'MATIC' },
+    { key: 'avax', name: 'Avalanche', description: 'AVAX' },
+    { key: 'bsc', name: 'BSC', description: 'BSC' },
+    // Text records (most common first)
+    { key: 'url', name: 'Website', description: 'URL' },
+    { key: 'x', name: 'Twitter/X', description: 'X' },
+    { key: 'github', name: 'GitHub', description: 'GITHUB' },
+    { key: 'name', name: 'Display Name', description: 'NAME' },
+    { key: 'bio', name: 'Bio', description: 'BIO' },
+    // Additional blockchain networks
+    { key: 'xrp', name: 'XRP', description: 'XRP' },
+    { key: 'ltc', name: 'Litecoin', description: 'LTC' },
+    { key: 'bch', name: 'Bitcoin Cash', description: 'BCH' },
+    { key: 'ada', name: 'Cardano', description: 'ADA' },
+    { key: 'dot', name: 'Polkadot', description: 'DOT' }
+];
+
+// Suggestion system variables
+let currentSuggestions = [];
+let selectedSuggestionIndex = -1;
+let suggestionDropdown = null;
+let suggestionList = null;
+
+// Auto-complete functionality with chain suggestions
 const setupAutoComplete = () => {
     if (!searchElement) return;
 
-    searchElement.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const value = e.target.value.trim();
+    // Get suggestion elements
+    suggestionDropdown = document.getElementById('suggestionDropdown');
+    suggestionList = document.getElementById('suggestionList');
 
-            // Only auto-complete if doesn't already have a TLD
-            if (value && !value.includes('.')) {
-                // Check if it looks like a domain name (alphanumeric, no spaces)
-                if (/^[a-zA-Z0-9-]+$/.test(value)) {
-                    searchElement.value = value + '.eth';
-                    // Position cursor before .eth
-                    searchElement.setSelectionRange(value.length, value.length);
-                }
+    searchElement.addEventListener('keydown', (e) => {
+        const value = e.target.value.trim();
+        const cursorPosition = e.target.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+
+        // Check if user typed a colon
+        if (e.key === ':') {
+            // Check if we have a .eth domain before the colon
+            const ethMatch = textBeforeCursor.match(/^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.eth)$/);
+            if (ethMatch) {
+                e.preventDefault();
+                showChainSuggestions(ethMatch[1]);
+                return;
+            }
+
+            // Check for shortcut format (name:chain) - auto-insert .eth
+            const shortcutMatch = textBeforeCursor.match(/^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])$/);
+            if (shortcutMatch) {
+                e.preventDefault();
+                const domainName = shortcutMatch[1] + '.eth';
+                showChainSuggestions(domainName);
+                return;
             }
         }
+
+        // Handle arrow keys for navigation
+        if (suggestionDropdown && suggestionDropdown.style.display !== 'none') {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                navigateSuggestions(1);
+                return;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                navigateSuggestions(-1);
+                return;
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < currentSuggestions.length) {
+                    completeSuggestion(currentSuggestions[selectedSuggestionIndex]);
+                } else {
+                    // Default .eth completion if no suggestion selected
+                    completeEthSuggestion(value);
+                }
+                return;
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+                return;
+            }
+        } else if (e.key === 'Tab') {
+            // Original Tab functionality for .eth completion
+            e.preventDefault();
+            completeEthSuggestion(value);
+        }
     });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchElement.contains(e.target) && !suggestionDropdown.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+};
+
+// Show chain suggestions
+const showChainSuggestions = (ethDomain) => {
+    currentSuggestions = availableChains;
+    selectedSuggestionIndex = 0;
+
+    // Update input with colon
+    searchElement.value = ethDomain + ':';
+    searchElement.setSelectionRange(searchElement.value.length, searchElement.value.length);
+
+    // Render suggestions
+    renderSuggestions();
+
+    // Show dropdown
+    suggestionDropdown.style.display = 'block';
+};
+
+// Render suggestion items
+const renderSuggestions = () => {
+    suggestionList.innerHTML = '';
+
+    currentSuggestions.forEach((chain, index) => {
+        const item = document.createElement('div');
+        item.className = `suggestion-item ${index === selectedSuggestionIndex ? 'selected' : ''}`;
+        item.innerHTML = `
+            <span class="chain-name">${chain.name}</span>
+            <span class="chain-description">${chain.description}</span>
+        `;
+
+        item.addEventListener('click', () => {
+            selectedSuggestionIndex = index;
+            completeSuggestion(chain);
+        });
+
+        suggestionList.appendChild(item);
+    });
+};
+
+// Navigate suggestions with arrow keys
+const navigateSuggestions = (direction) => {
+    if (currentSuggestions.length === 0) return;
+
+    selectedSuggestionIndex += direction;
+
+    // Wrap around
+    if (selectedSuggestionIndex < 0) {
+        selectedSuggestionIndex = currentSuggestions.length - 1;
+    } else if (selectedSuggestionIndex >= currentSuggestions.length) {
+        selectedSuggestionIndex = 0;
+    }
+
+    renderSuggestions();
+};
+
+// Complete suggestion
+const completeSuggestion = (chain) => {
+    const currentValue = searchElement.value;
+    const ethMatch = currentValue.match(/^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.eth):?$/);
+
+    if (ethMatch) {
+        searchElement.value = ethMatch[1] + ':' + chain.key;
+        searchElement.setSelectionRange(searchElement.value.length, searchElement.value.length);
+    }
+
+    hideSuggestions();
+};
+
+// Complete .eth suggestion (original functionality)
+const completeEthSuggestion = (value) => {
+    // Only auto-complete if doesn't already have a TLD
+    if (value && !value.includes('.')) {
+        // Check if it looks like a domain name (alphanumeric, no spaces)
+        if (/^[a-zA-Z0-9-]+$/.test(value)) {
+            searchElement.value = value + '.eth';
+            // Position cursor at the end of the text (after .eth)
+            const newLength = searchElement.value.length;
+            searchElement.setSelectionRange(newLength, newLength);
+        }
+    }
+};
+
+// Hide suggestions
+const hideSuggestions = () => {
+    if (suggestionDropdown) {
+        suggestionDropdown.style.display = 'none';
+    }
+    currentSuggestions = [];
+    selectedSuggestionIndex = -1;
 };
 
 const showLoading = () => {
@@ -731,16 +1068,15 @@ const typewriterEffect = async (element, text, speed = 100) => {
 
 const display = async (info, profilePicture = null, chainInfo = null, dnssecInfo = null) => {
     if (!lblValue || !lblHidden) {
-        console.log("Display elements not ready");
         return;
     }
 
     try {
-        // Update profile picture if available (only for Ethereum)
+        // Update profile picture if available (for all .eth domains)
         const profilePicElement = document.getElementById('profilePicture');
         const defaultIcon = document.querySelector('.default-icon');
         if (profilePicElement && defaultIcon) {
-            if (profilePicture && chainInfo && chainInfo.name === 'Ethereum') {
+            if (profilePicture) {
                 profilePicElement.src = profilePicture;
                 profilePicElement.style.display = 'block';
                 defaultIcon.style.display = 'none';
@@ -759,13 +1095,11 @@ const display = async (info, profilePicture = null, chainInfo = null, dnssecInfo
         lblHidden.innerHTML = info;
 
         // Show DNSSEC trust indicator inline with the address
-        console.log('🎯 DNSSEC info:', dnssecInfo);
         if (dnssecInfo && dnssecInfo.isValid) {
             showInlineTrustIndicator('DNSSEC Validated', 'success');
         } else if (dnssecInfo && !dnssecInfo.isValid) {
             showInlineTrustIndicator('No DNSSEC', 'warning');
         } else {
-            console.log('❌ No DNSSEC info available');
         }
 
         // Wait a bit before copying to clipboard
@@ -773,7 +1107,6 @@ const display = async (info, profilePicture = null, chainInfo = null, dnssecInfo
             copy();
         }, 500);
     } catch (error) {
-        console.log("Error in display function:", error);
         // Fallback: just set the text directly
         if (lblValue && lblHidden) {
             lblValue.innerHTML = info;
@@ -807,7 +1140,6 @@ const showInlineTrustIndicator = (message, type) => {
     // Hide the keyboard shortcuts section
     if (keyboardShortcuts) {
         keyboardShortcuts.style.display = 'none';
-        console.log('🙈 Hidden keyboard shortcuts section');
     }
 
     if (keyboardShortcuts) {
@@ -815,17 +1147,14 @@ const showInlineTrustIndicator = (message, type) => {
         targetContainer = keyboardShortcuts.nextElementSibling ||
             keyboardShortcuts.parentElement?.nextElementSibling ||
             keyboardShortcuts.parentElement;
-        console.log('📍 Found keyboard shortcuts, target container:', targetContainer);
     } else {
         // Fallback: look for the main container
         targetContainer = document.querySelector('.container') ||
             document.querySelector('main') ||
             document.body;
-        console.log('📍 Using fallback container:', targetContainer);
     }
 
     if (!targetContainer) {
-        console.log('❌ Could not find target container');
         return;
     }
 
@@ -864,26 +1193,22 @@ const showInlineTrustIndicator = (message, type) => {
         targetContainer.insertBefore(indicator, targetContainer.firstChild);
     }
 
-    console.log('✅ Inline trust indicator added to address section');
 
     // Auto-remove after 10 seconds and show keyboard shortcuts back
     setTimeout(() => {
         if (indicator.parentNode) {
             indicator.remove();
-            console.log('🗑️ Inline trust indicator removed');
         }
 
         // Show the keyboard shortcuts section back
         if (keyboardShortcuts) {
             keyboardShortcuts.style.display = '';
-            console.log('👁️ Showing keyboard shortcuts section back');
         }
     }, 10000);
 };
 
 // Show trust indicator (keeping the old function for compatibility)
 const showTrustIndicator = (message, type) => {
-    console.log('🎨 Creating trust indicator:', message, type);
 
     // Remove existing trust indicator
     const existingIndicator = document.getElementById('trustIndicator');
@@ -915,13 +1240,11 @@ const showTrustIndicator = (message, type) => {
     const container = document.querySelector('.container') || document.body;
     container.appendChild(indicator);
 
-    console.log('✅ Trust indicator added to DOM');
 
     // Auto-remove after 8 seconds (longer for testing)
     setTimeout(() => {
         if (indicator.parentNode) {
             indicator.remove();
-            console.log('🗑️ Trust indicator removed');
         }
     }, 8000);
 };
@@ -959,7 +1282,6 @@ const clearFields = () => {
 
     if (keyboardShortcuts && keyboardShortcuts.style.display === 'none') {
         keyboardShortcuts.style.display = '';
-        console.log('👁️ Showing keyboard shortcuts section back (cleared)');
     }
 
     hideResult();
@@ -1015,10 +1337,8 @@ async function loadSettings() {
             // This function is no longer used, so we remove it.
         } catch (error) {
             // This is normal when popup is opened without an active tab
-            console.log('Could not initialize in-page resolution - no active tab');
         }
     } catch (error) {
-        console.log('Error loading settings:', error);
     }
 }
 
@@ -1027,7 +1347,6 @@ async function saveSettings() {
     try {
         await chrome.storage.sync.set({ ensResolverSettings: settings });
     } catch (error) {
-        console.log('Error saving settings:', error);
     }
 }
 
@@ -1074,7 +1393,6 @@ async function fetchEthPrice() {
             ethPriceText.textContent = 'Price unavailable';
         }
     } catch (error) {
-        console.log('Error fetching ETH price:', error);
         ethPriceText.textContent = 'Price unavailable';
     }
 }
@@ -1105,7 +1423,6 @@ async function fetchEnsPrice() {
             ensPriceText.textContent = 'Price unavailable';
         }
     } catch (error) {
-        console.log('Error fetching ENS price:', error);
         ensPriceText.textContent = 'Price unavailable';
     }
 }
@@ -1209,7 +1526,6 @@ contract BasicResolver is Resolver {
         toast('Code copied! Paste it in Remix and create a new file called "BasicResolver.sol"', 5000);
 
     } catch (error) {
-        console.log('Clipboard copy failed:', error);
 
         // Fallback: just open Remix
         chrome.tabs.create({ url: 'https://remix.ethereum.org/' });

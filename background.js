@@ -1,5 +1,4 @@
 // Background script for ENS Resolver
-console.log('ENS Resolver: Background script loaded');
 
 // Multi-chain configuration
 const chainConfig = {
@@ -30,8 +29,49 @@ const chainConfig = {
     bio: { name: 'description', displayName: 'Bio', explorer: null }
 };
 
-// Detect chain from domain name
+// Convert domain name to new format (name.eth:chain) if needed
+function convertToNewFormat(domainName) {
+    // If already in new format, return as-is
+    if (domainName.includes(':')) {
+        return domainName;
+    }
+
+    // Handle old format (name.chain) - convert to new format
+    const match = domainName.match(/\.([^.]+)$/);
+    if (match && chainConfig[match[1]]) {
+        const tld = match[1];
+        const nameWithoutTLD = domainName.replace(`.${tld}`, '');
+
+        // For .eth domains, return as-is
+        if (tld === 'eth') {
+            return domainName;
+        }
+
+        // For other chains, convert to new format
+        return `${nameWithoutTLD}.eth:${tld}`;
+    }
+
+    // If no TLD or unsupported, add .eth
+    if (!domainName.includes('.')) {
+        return domainName + '.eth';
+    }
+
+    return domainName;
+}
+
+// Detect chain from domain name - supports both new format (name.eth:chain) and old format (name.chain)
 function detectChain(domainName) {
+    // Check for new format (name.eth:chain)
+    const colonIndex = domainName.lastIndexOf(':');
+    if (colonIndex !== -1) {
+        const targetChain = domainName.substring(colonIndex + 1);
+        if (chainConfig[targetChain]) {
+            return chainConfig[targetChain];
+        }
+        return null;
+    }
+
+    // Handle old format (name.chain) - backward compatibility
     const parts = domainName.split('.');
     const tld = parts[parts.length - 1];
     return chainConfig[tld] || null;
@@ -40,12 +80,13 @@ function detectChain(domainName) {
 // Multi-chain resolution function
 async function resolveMultiChain(domainName, network = 'mainnet') {
     const chainInfo = detectChain(domainName);
-    console.log('Background resolving:', domainName, 'Chain info:', chainInfo);
 
     if (!chainInfo) {
-        console.log('No chain info found for:', domainName);
         return null;
     }
+
+    // Convert to new format for server requests
+    const serverDomainName = convertToNewFormat(domainName);
 
     try {
         // For .eth domains, use different APIs based on network
@@ -58,7 +99,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For testnet, use local ENS server only
                 promises = [
                     // Try local ENS testnet server
-                    fetch(`http://localhost:3001/resolve/${domainName}?network=sepolia`)
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -67,7 +108,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
                     // Try local ENS server with mainnet network
-                    fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`)
+                    fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -83,15 +124,13 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
             // For other TLDs, use different APIs based on network
             if (network === 'testnet') {
                 // For testnet, use local ENS server for multi-chain resolution
-                const response = await fetch(`http://localhost:3001/resolve/${domainName}?network=sepolia`);
+                const response = await fetch(`http://localhost:3001/resolve/${serverDomainName}?network=sepolia`);
 
                 if (!response.ok) {
-                    console.log('Local server response not ok:', response.status, response.statusText);
                     return null;
                 }
 
                 const data = await response.json();
-                console.log('Local server response:', data);
 
                 if (data.success && data.data && data.data.address) {
                     return data.data.address;
@@ -99,15 +138,13 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 return null;
             } else {
                 // For mainnet, use local ENS server with testnet resolution logic
-                const response = await fetch(`http://localhost:3001/resolve/${domainName}?network=mainnet`);
+                const response = await fetch(`http://localhost:3001/resolve/${serverDomainName}?network=mainnet`);
 
                 if (!response.ok) {
-                    console.log('Local server response not ok:', response.status, response.statusText);
                     return null;
                 }
 
                 const data = await response.json();
-                console.log('Local server response:', data);
 
                 if (data.success && data.data && data.data.address) {
                     return data.data.address;
@@ -116,7 +153,6 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
             }
         }
     } catch (error) {
-        console.log('Background resolution error:', error);
         return null;
     }
 }
@@ -124,7 +160,6 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
 // Handle messages from popup and content script
 chrome.runtime.onMessage.addListener(
     (message, sender, sendResponse) => {
-        console.log('ENS Resolver: Received message:', message);
 
         if (message.action === 'resolveMultiChain') {
             // Handle multi-chain resolution requests from content script
@@ -144,9 +179,7 @@ chrome.runtime.onMessage.addListener(
                         enabled: message.enabled
                     }, (response) => {
                         if (chrome.runtime.lastError) {
-                            console.log('ENS Resolver: Content script not available');
                         } else {
-                            console.log('ENS Resolver: In-page resolution toggled');
                         }
                     });
                 }

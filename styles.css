@@ -247,6 +247,65 @@ body {
     box-shadow: none !important;
 }
 
+/* Suggestion Dropdown Styles */
+.suggestion-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    margin-top: 2px;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    width: 280px;
+    min-width: 200px;
+}
+
+.suggestion-list {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 6px 10px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.suggestion-item.selected {
+    background: rgba(0, 128, 188, 0.25);
+    color: #ffffff;
+}
+
+.suggestion-item .chain-name {
+    font-weight: 500;
+    font-size: 13px;
+    flex: 1;
+}
+
+.suggestion-item .chain-description {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
 /* Resolve Button */
 .resolve-btn {
     background: linear-gradient(135deg, var(--ens-blue), #006699);

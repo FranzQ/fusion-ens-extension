@@ -1,4 +1,3 @@
-console.log('ENS Resolver: Content script loaded');
 
 // Show status indicator
 function showStatusIndicator() {
@@ -73,8 +72,8 @@ const chainConfig = {
     bio: { name: 'description', displayName: 'Bio', explorer: null }
 };
 
-// Multi-chain regex for flexible TLD validation
-const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*\.[a-zA-Z0-9]+$/;
+// Multi-chain regex for flexible TLD validation - supports both old format (name.chain) and new format (name.eth:chain)
+const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*(\.[a-zA-Z0-9]+)?(:[a-zA-Z0-9]+)?$/;
 
 // Detect chain from domain name
 function detectChain(domainName) {
@@ -101,10 +100,8 @@ function isLikelyDomainName(value) {
 
 async function resolveMultiChain(domainName) {
     const chainInfo = detectChain(domainName);
-    console.log('Content script resolving:', domainName, 'Chain info:', chainInfo);
 
     if (!chainInfo) {
-        console.log('No chain info found for:', domainName);
         return null;
     }
 
