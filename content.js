@@ -1,46 +1,4 @@
 
-// Show status indicator
-function showStatusIndicator() {
-    const indicator = document.createElement('div');
-    indicator.id = 'ens-resolver-status';
-    indicator.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #011A25;
-        color: #E8F4FD;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-family: 'Inter', sans-serif;
-        border: 1px solid rgba(0, 128, 188, 0.3);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    `;
-    indicator.textContent = 'Fusion ENS Ready';
-    document.body.appendChild(indicator);
-
-    // Show for 3 seconds then fade out
-    setTimeout(() => {
-        indicator.style.opacity = '1';
-        setTimeout(() => {
-            indicator.style.opacity = '0';
-            setTimeout(() => {
-                if (indicator.parentNode) {
-                    indicator.parentNode.removeChild(indicator);
-                }
-            }, 300);
-        }, 3000);
-    }, 100);
-}
-
-// Show status indicator on load
-showStatusIndicator();
-
-// --- Multi-chain resolution for all input fields ---
-
 let ensTooltip = null;
 let ensTooltipTarget = null;
 let ensTooltipTimeout = null;
@@ -243,8 +201,6 @@ function handleInputEvent(e) {
                 showMultiChainTooltip(el, resolvedData, chainInfo, null);
                 // Auto-replace if enabled
                 autoReplaceDomainName(el, resolvedData);
-            } else {
-                showMultiChainTooltip(el, null, chainInfo, 'Not resolved');
             }
         }, 600);
     } else {

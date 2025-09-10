@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Fusion ENS",
     "version": "1.0",
-    "description": "ENS Everywhere! Resolve addresses across blockchains including Bitcoin, Solana, Dogecoin, and more. Features smart autocomplete, profile pictures, and real-time security validation.",
+    "description": "ENS Everywhere! Resolve and explore ENS name addresses and more.",
     "permissions": [
       "activeTab",
       "clipboardWrite",
@@ -30,11 +30,13 @@
       }
     ],
     "icons": {
-      "16": "images/ens_logo.png",
-      "48": "images/ens_logo.png",
-      "128": "images/ens_logo.png"
+      "16": "images/logo-16.png",
+      "48": "images/logo-48.png",
+      "128": "images/logo-128.png"
     },
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'"
-    }
-  } 
+    },
+    "author": "Fusion ENS",
+    "homepage_url": "https://fusionens.com"
+} 

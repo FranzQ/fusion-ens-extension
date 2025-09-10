@@ -477,10 +477,6 @@ async function resolve() {
         const address = await resolveENS(domainName, settings.network);
 
         if (address) {
-            // Show success message for debugging
-            if (domainName.includes('.base.eth')) {
-                toast(`✅ Resolved ${domainName}`, 2000);
-            }
             // Fetch profile picture (always for .eth domains on mainnet, regardless of target chain)
             let profilePicture = null;
             if (settings.network === 'mainnet') {
