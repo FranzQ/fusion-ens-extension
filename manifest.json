@@ -6,8 +6,7 @@
     "permissions": [
       "activeTab",
       "clipboardWrite",
-      "storage",
-      "scripting"
+      "storage"
     ],
     "action": {
       "default_popup": "popup.html",
