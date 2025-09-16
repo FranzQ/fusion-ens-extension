@@ -1,6 +1,6 @@
 // API Configuration
-// const API_BASE_URL = 'https://api.fusionens.com';
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = 'https://api.fusionens.com';
+// const API_BASE_URL = 'http://localhost:3001';
 
 // Track external API usage for analytics
 async function trackExternalAPIUsage(domain, success, chain, network, externalAPI = 'ensideas') {
