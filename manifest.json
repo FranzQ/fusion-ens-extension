@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Fusion ENS",
-    "version": "1.0",
+    "version": "1.1",
     "description": "ENS Everywhere! Resolve and explore ENS name addresses and more.",
     "permissions": [
       "activeTab",

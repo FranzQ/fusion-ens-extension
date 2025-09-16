@@ -1,3 +1,31 @@
+// API Configuration
+// const API_BASE_URL = 'https://api.fusionens.com';
+const API_BASE_URL = 'http://localhost:3001';
+
+// Track external API usage for analytics
+async function trackExternalAPIUsage(domain, success, chain, network, externalAPI = 'ensideas') {
+    try {
+        await fetch(`${API_BASE_URL}/analytics/track-external`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                domain: domain,
+                source: 'chrome-extension',
+                success: success,
+                chain: chain,
+                network: network,
+                external_api: externalAPI
+            })
+        });
+    } catch (error) {
+        // Silently fail - analytics shouldn't break the main functionality
+        console.log('Analytics tracking failed:', error);
+    }
+}
+
+
 const invalidChars = /[!@#$%^&*()+\=\[\]{};'"\\|,<>\/?]+/;
 // Updated regex to support both old format (name.chain) and new format (name.eth:chain)
 const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*(\.[a-zA-Z0-9]+)?(:[a-zA-Z0-9]+)?$/;
@@ -263,14 +291,14 @@ async function resolveENS(domainName, network = 'mainnet') {
         // Use local server for text records (.x, .url, .github, etc.)
         if (network === 'testnet') {
             promises = [
-                fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
+                fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=sepolia&source=chrome-extension`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
             ];
         } else {
             promises = [
-                fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
+                fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null)
@@ -285,8 +313,17 @@ async function resolveENS(domainName, network = 'mainnet') {
             promises = [
                 fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
                     .then(response => response.ok ? response.json() : null)
-                    .then(data => data?.address || null)
-                    .catch(() => null)
+                    .then(data => {
+                        const success = data?.address ? true : false;
+                        // Track external API usage
+                        trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                        return data?.address || null;
+                    })
+                    .catch(() => {
+                        // Track failed external API usage
+                        trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                        return null;
+                    })
             ];
         } else if (chain === 'eth') {
             // For .eth domains, use different APIs based on network
@@ -294,7 +331,7 @@ async function resolveENS(domainName, network = 'mainnet') {
                 // For testnet, use local ENS server only
                 promises = [
                     // Try local ENS testnet server
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=sepolia&source=chrome-extension`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null)
@@ -303,7 +340,7 @@ async function resolveENS(domainName, network = 'mainnet') {
                 // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
                     // Try local ENS server with mainnet network
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null)
@@ -314,7 +351,7 @@ async function resolveENS(domainName, network = 'mainnet') {
             if (network === 'testnet') {
                 promises = [
                     // Try local ENS server for multi-chain resolution
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=sepolia&source=chrome-extension`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
@@ -322,13 +359,22 @@ async function resolveENS(domainName, network = 'mainnet') {
                     // Fallback: External API (keep original format for external APIs)
                     fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
                         .then(response => response.ok ? response.json() : null)
-                        .then(data => data?.address || null)
-                        .catch(() => null)
+                        .then(data => {
+                            const success = data?.address ? true : false;
+                            // Track external API usage
+                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                            return data?.address || null;
+                        })
+                        .catch(() => {
+                            // Track failed external API usage
+                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                            return null;
+                        })
                 ];
             } else {
                 promises = [
                     // Primary: Local ENS server (handles multi-chain)
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
@@ -336,8 +382,17 @@ async function resolveENS(domainName, network = 'mainnet') {
                     // Fallback: ENS Ideas API (keep original format for external APIs)
                     fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
                         .then(response => response.ok ? response.json() : null)
-                        .then(data => data?.address || null)
-                        .catch(() => null),
+                        .then(data => {
+                            const success = data?.address ? true : false;
+                            // Track external API usage
+                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                            return data?.address || null;
+                        })
+                        .catch(() => {
+                            // Track failed external API usage
+                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                            return null;
+                        }),
 
                     // Additional fallback: ENS Node API (keep original format for external APIs)
                     fetch(`https://api.alpha.ensnode.io/name/${domainName}`)
@@ -497,7 +552,7 @@ async function resolve() {
 
                     // Get the Ethereum address for avatar lookup
                     try {
-                        const ethResponse = await fetch(`https://api.fusionens.com/resolve/${baseDomain}?network=mainnet`);
+                        const ethResponse = await fetch(`${API_BASE_URL}/resolve/${baseDomain}?network=mainnet&source=chrome-extension`);
                         if (ethResponse.ok) {
                             const ethData = await ethResponse.json();
                             if (ethData.success) {
@@ -879,6 +934,43 @@ const setupAutoComplete = () => {
             // Original Tab functionality for .eth completion
             e.preventDefault();
             completeEthSuggestion(value);
+        }
+    });
+
+    // Handle input changes to filter suggestions
+    searchElement.addEventListener('input', (e) => {
+        const value = e.target.value.trim();
+        const cursorPosition = e.target.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+
+        // Check if we're in chain suggestion mode (after colon)
+        const colonIndex = textBeforeCursor.lastIndexOf(':');
+        if (colonIndex !== -1) {
+            const ethMatch = textBeforeCursor.substring(0, colonIndex).match(/^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.eth)$/);
+            if (ethMatch) {
+                const typedChain = textBeforeCursor.substring(colonIndex + 1).toLowerCase();
+
+                // Filter suggestions based on what's typed after colon
+                if (typedChain) {
+                    currentSuggestions = availableChains.filter(chain =>
+                        chain.key.toLowerCase().includes(typedChain) ||
+                        chain.name.toLowerCase().includes(typedChain) ||
+                        chain.description.toLowerCase().includes(typedChain)
+                    );
+                } else {
+                    currentSuggestions = availableChains;
+                }
+
+                selectedSuggestionIndex = 0;
+                renderSuggestions();
+
+                // Show dropdown if there are suggestions
+                if (currentSuggestions.length > 0) {
+                    suggestionDropdown.style.display = 'block';
+                } else {
+                    suggestionDropdown.style.display = 'none';
+                }
+            }
         }
     });
 

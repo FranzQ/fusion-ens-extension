@@ -1,5 +1,32 @@
 // Background script for ENS Resolver
 
+// API Configuration
+// const API_BASE_URL = 'https://api.fusionens.com';
+const API_BASE_URL = 'http://localhost:3001';
+
+// Track external API usage for analytics
+async function trackExternalAPIUsage(domain, success, chain, network, externalAPI = 'ensideas') {
+    try {
+        await fetch(`${API_BASE_URL}/analytics/track-external`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                domain: domain,
+                source: 'chrome-extension',
+                success: success,
+                chain: chain,
+                network: network,
+                external_api: externalAPI
+            })
+        });
+    } catch (error) {
+        // Silently fail - analytics shouldn't break the main functionality
+        console.log('Analytics tracking failed:', error);
+    }
+}
+
 // Multi-chain configuration
 const chainConfig = {
     eth: { name: 'ethereum', displayName: 'Ethereum', explorer: 'https://etherscan.io/address/' },
@@ -99,7 +126,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For testnet, use local ENS server only
                 promises = [
                     // Try local ENS testnet server
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=sepolia&source=chrome-extension`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -108,7 +135,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 // For mainnet, use local ENS server with testnet resolution logic
                 promises = [
                     // Try local ENS server with mainnet network
-                    fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`)
+                    fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
                         .then(r => r.ok ? r.json() : null)
                         .then(d => d?.success ? d.data.address : null)
                         .catch(() => null)
@@ -124,7 +151,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
             // For other TLDs, use different APIs based on network
             if (network === 'testnet') {
                 // For testnet, use local ENS server for multi-chain resolution
-                const response = await fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=sepolia`);
+                const response = await fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=sepolia&source=chrome-extension`);
 
                 if (!response.ok) {
                     return null;
@@ -138,7 +165,7 @@ async function resolveMultiChain(domainName, network = 'mainnet') {
                 return null;
             } else {
                 // For mainnet, use local ENS server with testnet resolution logic
-                const response = await fetch(`https://api.fusionens.com/resolve/${serverDomainName}?network=mainnet`);
+                const response = await fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`);
 
                 if (!response.ok) {
                     return null;
