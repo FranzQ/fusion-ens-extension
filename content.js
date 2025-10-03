@@ -30,8 +30,8 @@ const chainConfig = {
     bio: { name: 'description', displayName: 'Bio', explorer: null }
 };
 
-// Multi-chain regex for flexible TLD validation - supports both old format (name.chain) and new format (name.eth:chain)
-const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*(\.[a-zA-Z0-9]+)?(:[a-zA-Z0-9]+)?$/;
+// Multi-chain regex for flexible TLD validation - supports both old format (name.chain) and new format (name.eth:chain), including emoji characters
+const multiChainRegex = /^[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}][\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}-]{0,61}[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}](\.[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}][\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}-]{0,61}[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}])*(\.[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}]+)?(:[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}]+)?$/u;
 
 // Detect chain from domain name
 function detectChain(domainName) {

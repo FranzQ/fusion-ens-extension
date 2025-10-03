@@ -27,8 +27,8 @@ async function trackExternalAPIUsage(domain, success, chain, network, externalAP
 
 
 const invalidChars = /[!@#$%^&*()+\=\[\]{};'"\\|,<>\/?]+/;
-// Updated regex to support both old format (name.chain) and new format (name.eth:chain)
-const multiChainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*(\.[a-zA-Z0-9]+)?(:[a-zA-Z0-9]+)?$/;
+// Updated regex to support both old format (name.chain) and new format (name.eth:chain), including emoji characters
+const multiChainRegex = /^[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}][\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}-]{0,61}[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}](\.[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}][\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}-]{0,61}[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}])*(\.[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}]+)?(:[\p{L}\p{N}\p{M}\p{S}\p{P}\p{Z}]+)?$/u;
 
 // Rotating ENS names for the title
 const rotatingEnsNames = [
@@ -1436,7 +1436,7 @@ let settings = {
 let isResolving = false;
 
 // DOM elements (will be initialized in window.onload)
-let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, efpBtn, settingsBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator, customResolverInput, deployResolverBtn, resolverStatusIndicator, resolverStatusText;
+let searchElement, resolveBtn, resultCard, lblValue, lblHidden, copyBtn, explorerBtn, efpBtn, settingsBtn, helpBtn, settingsModal, closeSettingsBtn, autoReplaceToggle, ethPriceText, mainnetBtn, testnetBtn, networkIndicator, customResolverInput, deployResolverBtn, resolverStatusIndicator, resolverStatusText;
 
 // Load settings from storage
 async function loadSettings() {
@@ -1687,6 +1687,7 @@ window.onload = async () => {
     explorerBtn = document.getElementById("btnExplorer");
     efpBtn = document.getElementById("btnEfp");
     settingsBtn = document.getElementById("settingsBtn");
+    helpBtn = document.getElementById("helpBtn");
     settingsModal = document.getElementById("settingsModal");
     closeSettingsBtn = document.getElementById("closeSettingsBtn");
     autoReplaceToggle = document.getElementById("autoReplaceToggle");
@@ -1712,6 +1713,9 @@ window.onload = async () => {
     // customResolverInput.addEventListener('input', validateCustomResolver); // DISABLED
     settingsBtn.onclick = () => {
         settingsModal.style.display = "flex";
+    };
+    helpBtn.onclick = () => {
+        chrome.tabs.create({ url: 'https://fusionens.com/chrome-extension' });
     };
     closeSettingsBtn.onclick = () => {
         settingsModal.style.display = "none";
