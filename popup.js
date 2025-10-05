@@ -309,8 +309,15 @@ async function resolveENS(domainName, network = 'mainnet') {
         const isEthSubdomain = domainName.endsWith('.eth') && domainName.includes('.');
 
         if (isEthSubdomain) {
-            // For ETH subdomains (.base.eth, .uni.eth, etc.), use ENS Ideas API only
+            // For ETH subdomains (.base.eth, .uni.eth, etc.), use Fusion API first, then ENS Ideas API
             promises = [
+                // Primary: Fusion API server (handles Base subdomains with ENSData fallback)
+                fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
+                    .then(response => response.ok ? response.json() : null)
+                    .then(data => data?.success ? data.data.address : null)
+                    .catch(() => null),
+
+                // Fallback: ENS Ideas API
                 fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => {
