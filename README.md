@@ -13,7 +13,7 @@ A powerful browser extension for resolving ENS names across multiple chains with
 - **Enhanced trust** for ENS resolutions
 
 ### 🌐 **Multi-Chain Resolution**
-- **New Format**: `name.eth:chain` (e.g., `vitalik.eth:btc`)
+- **New Format**: `name.eth:chain` (e.g., `onshow.eth:btc`)
 - **Supported Chains**: Bitcoin, Solana, Dogecoin, XRP, Litecoin, Bitcoin Cash, Cardano, Polkadot, Avalanche, Polygon, Base, Arbitrum, Optimism, BSC
 - **Smart Autocomplete**: Type `:` after `.eth` to see chain suggestions
 - **Arrow Key Navigation**: Use ↑↓ to cycle through available chains
@@ -52,13 +52,13 @@ A powerful browser extension for resolving ENS names across multiple chains with
 ## 🔍 Multi-Chain Examples
 
 **New Format (Recommended):**
-- `vitalik.eth:btc` → Bitcoin address
+- `onshow.eth:btc` → Bitcoin address
 - `onshow.eth:sol` → Solana address
 - `alice.eth:base` → Base network address
 - `bob.eth:doge` → Dogecoin address
 
 **Shortcut Format (Auto-inserts .eth):**
-- `vitalik:btc` → Bitcoin address (becomes `vitalik.eth:btc`)
+- `vitalik:btc` → Bitcoin address (becomes `onshow.eth:btc`)
 - `onshow:sol` → Solana address (becomes `onshow.eth:sol`)
 - `ses:url` → Website URL (becomes `ses.eth:url`)
 - `alice:x` → Twitter/X profile (becomes `alice.eth:x`)
