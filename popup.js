@@ -3,7 +3,7 @@ const API_BASE_URL = 'https://api.fusionens.com';
 // const API_BASE_URL = 'http://localhost:3001';
 
 // Track external API usage for analytics
-async function trackExternalAPIUsage(domain, success, chain, network, externalAPI = 'ensideas') {
+async function trackExternalAPIUsage(domain, success, chain, network, externalAPI = 'ensdata') {
     try {
         await fetch(`${API_BASE_URL}/analytics/track-external`, {
             method: 'POST',
@@ -309,7 +309,7 @@ async function resolveENS(domainName, network = 'mainnet') {
         const isEthSubdomain = domainName.endsWith('.eth') && domainName.includes('.');
 
         if (isEthSubdomain) {
-            // For ETH subdomains (.base.eth, .uni.eth, etc.), use Fusion API first, then ENS Ideas API
+            // For ETH subdomains (.base.eth, .uni.eth, etc.), use Fusion API first, then ENSData API
             promises = [
                 // Primary: Fusion API server (handles Base subdomains with ENSData fallback)
                 fetch(`${API_BASE_URL}/resolve/${serverDomainName}?network=mainnet&source=chrome-extension`)
@@ -317,18 +317,18 @@ async function resolveENS(domainName, network = 'mainnet') {
                     .then(data => data?.success ? data.data.address : null)
                     .catch(() => null),
 
-                // Fallback: ENS Ideas API
-                fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                // Fallback: ENSData API
+                fetch(`https://api.ensdata.net/${domainName}`)
                     .then(response => response.ok ? response.json() : null)
                     .then(data => {
                         const success = data?.address ? true : false;
                         // Track external API usage
-                        trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                        trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensdata');
                         return data?.address || null;
                     })
                     .catch(() => {
                         // Track failed external API usage
-                        trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                        trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensdata');
                         return null;
                     })
             ];
@@ -363,18 +363,18 @@ async function resolveENS(domainName, network = 'mainnet') {
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
 
-                    // Fallback: External API (keep original format for external APIs)
-                    fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                    // Fallback: ENSData API
+                    fetch(`https://api.ensdata.net/${domainName}`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => {
                             const success = data?.address ? true : false;
                             // Track external API usage
-                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensdata');
                             return data?.address || null;
                         })
                         .catch(() => {
                             // Track failed external API usage
-                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensdata');
                             return null;
                         })
                 ];
@@ -386,18 +386,18 @@ async function resolveENS(domainName, network = 'mainnet') {
                         .then(data => data?.success ? data.data.address : null)
                         .catch(() => null),
 
-                    // Fallback: ENS Ideas API (keep original format for external APIs)
-                    fetch(`https://api.ensideas.com/ens/resolve/${domainName}`)
+                    // Fallback: ENSData API
+                    fetch(`https://api.ensdata.net/${domainName}`)
                         .then(response => response.ok ? response.json() : null)
                         .then(data => {
                             const success = data?.address ? true : false;
                             // Track external API usage
-                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensideas');
+                            trackExternalAPIUsage(domainName, success, 'eth', 'mainnet', 'ensdata');
                             return data?.address || null;
                         })
                         .catch(() => {
                             // Track failed external API usage
-                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensideas');
+                            trackExternalAPIUsage(domainName, false, 'eth', 'mainnet', 'ensdata');
                             return null;
                         }),
 
@@ -472,12 +472,12 @@ async function fetchProfilePicture(ensName, address) {
             }
         }
 
-        // Fallback: try ENS Ideas API for avatar
-        const ensResponse = await fetch(`https://api.ensideas.com/ens/resolve/${ensName}`);
+        // Fallback: try ENSData API for avatar
+        const ensResponse = await fetch(`https://api.ensdata.net/${ensName}`);
         if (ensResponse.ok) {
             const data = await ensResponse.json();
-            if (data?.avatar) {
-                return data.avatar;
+            if (data?.avatar_small) {
+                return data.avatar_small;
             }
         }
 
